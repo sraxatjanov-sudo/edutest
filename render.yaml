@@ -10,3 +10,8 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 22.22.0
+      # Ma'lumotlarni saqlash: yopiq GitHub ombori va token (README → "Ma'lumotlarni saqlash")
+      - key: BACKUP_REPO
+        sync: false
+      - key: BACKUP_TOKEN
+        sync: false

@@ -16,7 +16,7 @@ function checkPassword(p) {
   return s;
 }
 
-const publicUser = (u) => ({ id: u.id, name: u.name, email: u.email, role: u.role, group: u.group_name ?? u.group ?? null });
+const publicUser = (u) => ({ id: u.id, name: u.name, email: u.email, role: u.role, group: u.group_name ?? u.group ?? null, avatar: u.avatar || null });
 
 module.exports = (r) => {
   r.post('/api/auth/register', ({ req, res, body, secure }) => {
@@ -29,7 +29,7 @@ module.exports = (r) => {
     if (db.prepare('SELECT 1 FROM users WHERE email = ?').get(email)) throw new HttpError(409, 'Bu email bilan hisob allaqachon mavjud. Kirish sahifasidan foydalaning');
     const id = Number(db.prepare('INSERT INTO users (name, email, password_hash, role, group_name, created_at) VALUES (?, ?, ?, \'student\', ?, ?)')
       .run(name, email, hashPassword(password), group, Date.now()).lastInsertRowid);
-    send(res, 201, { user: { id, name, email, role: 'student', group } }, { 'Set-Cookie': session.create(id, secure) });
+    send(res, 201, { user: { id, name, email, role: 'student', group, avatar: null } }, { 'Set-Cookie': session.create(id, secure) });
   });
 
   r.post('/api/auth/login', ({ req, res, body, secure }) => {

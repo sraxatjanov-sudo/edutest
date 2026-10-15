@@ -1,16 +1,17 @@
-import { get } from '../api.js';
-import { esc, icon, fmtDate, fmtDuration, fmtClock, pctClass, hbars, emptyState, reasonLabel, markOf, t } from '../ui.js';
+import { get, post } from '../api.js';
+import { esc, icon, fmtDate, fmtDuration, fmtClock, pctClass, hbars, emptyState, reasonLabel, markOf, toast, confirmDialog, t } from '../ui.js';
 
 export default async function dashboard(main, _p, { state, setTitle }) {
   setTitle(t('Kabinet'));
-  const d = await get('/api/me/dashboard');
+  const [d, { certificates }, { groups }] = await Promise.all([get('/api/me/dashboard'), get('/api/me/certificates'), get('/api/me/groups')]);
   const s = d.summary;
   const first = state.user.name.split(' ')[0];
 
   main.innerHTML = `<div class="wrap page">
     <div class="page-head"><div><h1>${t('Salom, {name}', { name: esc(first) })}</h1>
       <p class="muted">${s.attempts ? t("Natijalaringiz va fanlar bo'yicha o'sishingiz.") : t("Birinchi testni topshiring, natijalaringiz shu yerda paydo bo'ladi.")}</p></div>
-      <a class="btn" href="/fanlar" data-link>${icon('play')} ${t('Test topshirish')}</a></div>
+      <div class="row"><a class="btn btn-ghost" href="/statistika" data-link>${icon('target')} ${t('Statistika')}</a>
+        <a class="btn" href="/fanlar" data-link>${icon('play')} ${t('Test topshirish')}</a></div></div>
 
     ${d.active.length ? `<div class="stack" style="margin-bottom:24px">${d.active.map((a) => `
       <div class="notice notice-warn">${icon('clock')}<div class="grow"><b>${t('Tugallanmagan test: {title}.', { title: esc(a.title) })}</b> ${t('Qolgan vaqt {time}.', { time: fmtClock((a.deadline - Date.now()) / 1000) })}</div>
@@ -30,6 +31,25 @@ export default async function dashboard(main, _p, { state, setTitle }) {
       <section class="panel"><div class="panel-head"><h2>${t('Tavsiya')}</h2></div><div class="panel-body stack">${advice(d.bySubject)}</div></section>
     </div>
 
+    <div class="grid-2" style="margin-bottom:24px">
+      <section class="panel" id="sertifikatlar"><div class="panel-head"><h2>${t('Sertifikatlarim')}</h2><span class="tag">${certificates.length}</span></div>
+        <div class="panel-body">${certificates.length ? `<div class="stack" style="--gap:10px">${certificates.slice(0, 6).map((c) => `
+          <a class="cert-mini" href="/sertifikat/${esc(c.code)}" data-link><span class="seal">${icon('award')}</span>
+            <div class="grow"><b>${esc(c.test)}</b><div class="tiny muted">${esc(c.subject)}, ${fmtDate(c.issuedAt, false)} · <span class="num">${esc(c.code)}</span></div></div>
+            <span class="pct ${pctClass(c.percent)}">${c.percent}%</span></a>`).join('')}</div>`
+          : `<p class="muted small">${t("Umumiy testlarda yaxshi natija (odatda 71% va undan yuqori) olsangiz, QR-kodli sertifikat beriladi.")}</p>`}</div></section>
+      <section class="panel"><div class="panel-head"><h2>${t('Guruhlarim')}</h2></div>
+        <div class="panel-body stack" style="--gap:14px">
+          ${groups.length ? `<div class="list">${groups.map((g) => `<div class="list-item"><span class="tag tag-lapis">${icon('users')}</span>
+            <div class="grow"><b>${esc(g.name)}</b><div class="tiny muted">${g.teacher ? t("O'qituvchi: {name}", { name: esc(g.teacher) }) + ', ' : ''}${t("{n} a'zo", { n: g.members })}${g.tests ? ', ' + t('{n} ta maxsus test', { n: g.tests }) : ''}</div></div>
+            <button class="btn btn-quiet btn-sm" data-leave="${g.id}" data-name="${esc(g.name)}">${t('Chiqish')}</button></div>`).join('')}</div>`
+            : `<p class="muted small">${t("O'qituvchingiz bergan kod orqali guruhga qo'shiling. Guruh uchun maxsus testlar faqat a'zolarga ko'rinadi.")}</p>`}
+          <form class="row" id="join" novalidate><input id="jcode" placeholder="${t('Guruh kodi, masalan K7M2QX')}" maxlength="8" autocomplete="off" class="input grow upper" style="min-width:170px">
+            <button class="btn btn-ghost">${icon('plus')} ${t("Qo'shilish")}</button></form>
+          <p class="form-error" id="jerr"></p>
+        </div></section>
+    </div>
+
     <section class="panel">
       <div class="panel-head"><h2>${t('Topshirilgan testlar')}</h2></div>
       ${d.history.length ? `<div class="table-wrap"><table class="table">
@@ -45,6 +65,25 @@ export default async function dashboard(main, _p, { state, setTitle }) {
         : emptyState(t('Hali test topshirilmagan'), t('Fanni tanlang va birinchi imtihonni boshlang.'), `<a class="btn" href="/fanlar" data-link>${t("Fanlarni ko'rish")}</a>`)}
     </section>
   </div>`;
+
+  const rerender = () => dashboard(main, _p, { state, setTitle });
+  main.querySelector('#join').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const err = main.querySelector('#jerr');
+    err.textContent = '';
+    try {
+      const r = await post('/api/groups/join', { code: main.querySelector('#jcode').value });
+      toast(t("«{name}» guruhiga qo'shildingiz", { name: r.group.name }), 'good');
+      rerender();
+    } catch (x) { err.textContent = x.message; }
+  });
+  main.querySelectorAll('[data-leave]').forEach((b) => b.addEventListener('click', async () => {
+    if (!await confirmDialog({ title: t('Guruhdan chiqasizmi?'), text: t("«{name}» guruhi uchun maxsus testlar sizga ko'rinmay qoladi. Qayta qo'shilish uchun kod kerak bo'ladi.", { name: b.dataset.name }), ok: t('Chiqish'), danger: true })) return;
+    await post(`/api/groups/${b.dataset.leave}/leave`);
+    toast(t('Guruhdan chiqdingiz'), 'good');
+    rerender();
+  }));
+  if (location.hash === '#sertifikatlar') main.querySelector('#sertifikatlar')?.scrollIntoView({ block: 'start' });
 }
 
 function advice(rows) {

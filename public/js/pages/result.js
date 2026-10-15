@@ -1,5 +1,5 @@
 import { get } from '../api.js';
-import { esc, rich, icon, KEYS, fmtDuration, fmtDate, diffDots, t } from '../ui.js';
+import { esc, rich, icon, KEYS, fmtDuration, fmtDate, diffDots, qimage, t } from '../ui.js';
 
 export function reviewList(review) {
   return review.map((q) => `
@@ -9,7 +9,7 @@ export function reviewList(review) {
         <span class="row">${diffDots(q.difficulty)}
           <span class="tag ${q.chosen === null ? 'tag-warn' : q.ok ? 'tag-good' : 'tag-bad'}">${q.chosen === null ? t('Javob berilmagan') : q.ok ? t("To'g'ri") : t("Noto'g'ri")}</span></span>
       </div>
-      <div class="qtext">${rich(q.text)}</div>
+      <div class="qtext">${rich(q.text)}</div>${qimage(q.image)}
       <div class="options">${q.options.map((o, i) => `
         <div class="opt ${i === q.correct ? 'is-right' : i === q.chosen ? 'is-wrong' : ''}"><span class="key">${KEYS[i]}</span><span class="grow">${rich(o)}</span>
           ${i === q.chosen ? `<span class="tiny" style="font-weight:700">${t('Sizning javobingiz')}</span>` : ''}</div>`).join('')}</div>
@@ -57,6 +57,10 @@ export default async function result(main, { id }, { setTitle }) {
   main.innerHTML = `<div class="wrap page" style="max-width:900px">
     <nav class="crumbs"><a href="/kabinet" data-link>${t('Kabinet')}</a><span>/</span><span>${t('Natija')}</span></nav>
     ${resultView(r)}
+    ${r.certificate ? `<div class="cert-banner" style="margin-top:20px"><span class="seal">${icon('trophy')}</span>
+        <div class="grow"><b>${t('Tabriklaymiz! Sizga sertifikat berildi.')}</b><div class="small muted">${t('Sertifikatni PDF qilib saqlashingiz yoki chop etishingiz mumkin. Undagi QR-kod orqali istalgan kishi uning haqiqiyligini tekshira oladi.')}</div></div>
+        <a class="btn btn-saffron" href="/sertifikat/${esc(r.certificate)}" data-link>${t('Sertifikatni ochish')}</a></div>`
+      : r.certPercent && r.finishReason !== 'violations' ? `<div class="notice notice-info" style="margin-top:20px">${icon('trophy')}<div>${t('Bu test bo\'yicha kamida {p}% natija olganlarga sertifikat beriladi. Yana urinib ko\'ring!', { p: r.certPercent })}</div></div>` : ''}
     <div class="row" style="margin:20px 0 32px">
       <a class="btn" href="/fan/${esc(r.test.slug)}" data-link>${icon('shuffle')} ${t('Yana topshirish')}</a>
       <a class="btn btn-ghost" href="/mashq/${esc(r.test.slug)}" data-link>${t('Mashq qilish')}</a>

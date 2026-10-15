@@ -16,13 +16,30 @@ EduTest — talabalar 11 ta fan bo'yicha onlayn imtihon topshiradigan va mashq q
 | Tayyor testlar | 22 ta (har fanda "umumiy test" va "tezkor sinov") |
 | Rollar | Talaba, O'qituvchi, Administrator |
 | Tashqi paketlar | **0 ta**: faqat Node.js'ning o'zi |
-| Avtomatik testlar | 24 ta (`npm test`) |
+| Avtomatik testlar | 33 ta (`npm test`) |
+| v3 yangiliklari | Sertifikat (QR-kod bilan), guruhlar, rasmli savollar, tungi rejim, statistika, Excel'dan import, imtihon jadvali, telefonga o'rnatish, ma'lumotlarni saqlash |
 
 ## Internetga joylash (bir tugma bilan)
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/sraxatjanov-sudo/edutest)
 
 Tugmani bosing, GitHub bilan kiring va **Deploy Blueprint** (yoki **Apply**) ni tasdiqlang. Sozlamalar `render.yaml` faylidan avtomatik olinadi. 2–5 daqiqadan keyin `https://edutest-xxxx.onrender.com` ko'rinishidagi havola paydo bo'ladi.
+
+## Ma'lumotlarni saqlash (bepul hostingda)
+
+Bepul Render serverida disk vaqtinchalik: sayt yangilanganda yoki 15 daqiqa kirilmay "uxlab" qolib qayta yonganda baza o'chadi. Buning oldini olish uchun EduTest bazani **yopiq GitHub omboriga** avtomatik zaxiralaydi va ishga tushganda o'sha yerdan tiklaydi.
+
+1. GitHub'da yangi ombor yarating, masalan `edutest-data`. **Private** (yopiq) ni tanlang. Bu juda muhim: bazada foydalanuvchilar ma'lumotlari bor.
+2. GitHub → **Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**.
+   - *Repository access:* **Only select repositories** → `edutest-data`
+   - *Permissions → Repository permissions → Contents:* **Read and write**
+   - Tokenni nusxalab oling (`github_pat_...`).
+3. Render → **edutest** xizmati → **Environment** → ikkita o'zgaruvchi qo'shing:
+   - `BACKUP_REPO` = `foydalanuvchi_nomi/edutest-data`
+   - `BACKUP_TOKEN` = tokenning o'zi
+4. **Save** — xizmat qayta ishga tushadi. Boshqaruv panelidagi "Ma'lumotlarni saqlash" bo'limida holat ko'rinadi.
+
+Baza har 3 daqiqada (o'zgarish bo'lsa) va server to'xtashidan oldin siqilgan holda saqlanadi. Omborda doim bitta commit turadi, shuning uchun u kattalashib ketmaydi. Ishga tushishda zaxirani o'qib bo'lmasa, eski nusxani buzmaslik uchun saqlash to'xtatiladi.
 
 ## Ishga tushirish
 
@@ -58,19 +75,27 @@ Kirish sahifasida bu hisoblarni bir bosishda to'ldirish mumkin.
 
 ### Talaba
 - Ro'yxatdan o'tish, kirish, profil va parolni o'zgartirish
-- 10 ta fan, qidiruv, har bir fan sahifasida testlar va savollar banki statistikasi
+- 11 ta fan, qidiruv, har bir fan sahifasida testlar va savollar banki statistikasi
 - **Imtihon rejimi:** to'liq ekran, taymer, savollar xaritasi, "keyinroq qaytaman" belgisi, klaviatura bilan boshqarish (A–F, ← →)
 - Har bir javob darhol serverga saqlanadi. Sahifa yopilsa ham test o'sha joydan davom etadi
 - **Natija:** foiz, baho (5/4/3/2), sarflangan vaqt, boshqalarga nisbatan o'rin, xatolar bo'yicha filtrli tahlil va izohlar
 - **Mashq rejimi:** javobdan keyin darhol to'g'ri variant va izoh ko'rsatiladi, natija reytingga kirmaydi
 - **Kabinet:** umumiy statistika, fanlar bo'yicha o'rtacha natija, zaif fan bo'yicha tavsiya, testlar tarixi
-- **Reyting:** fan va davr (7 kun, 30 kun, barcha vaqt) bo'yicha
+- **Reyting:** fan, davr (7 kun, 30 kun, barcha vaqt) va o'z guruhi bo'yicha
+- **Sertifikat:** yaxshi natija uchun avtomatik beriladi. A4 formatda PDF qilib saqlash yoki chop etish mumkin. QR-kod va `EDU-XXXX-XXXX` raqami orqali istalgan kishi `/sertifikat` sahifasida haqiqiyligini tekshiradi
+- **Statistika:** natijalar dinamikasi grafigi, 16 haftalik faollik xaritasi, qiyinlik va fanlar bo'yicha aniqlik, ketma-ket faol kunlar
+- **Xatolar ustida ishlash:** oxirgi marta noto'g'ri javob berilgan savollardan alohida mashq
+- **Guruhlar:** o'qituvchi bergan 6 belgili kod bilan guruhga qo'shilish, guruh uchun maxsus testlar
+- **Profil rasmi**, tungi rejim, telefonga ilova sifatida o'rnatish (PWA)
 
 ### O'qituvchi
 - Umumiy ko'rinish: 14 kunlik faollik diagrammasi, fanlar bo'yicha natijalar, so'nggi qoidabuzarliklar, eng qiyin savollar
 - **Savollar banki:** qidiruv, filtr, sahifalash, qo'shish, tahrirlash, arxivlash
-- **Ommaviy import:** oddiy matn formatida yuzlab savolni bir martada qo'shish, avval xatolarni tekshirish
-- **Testlar:** savollar soni, vaqt, qiyinlik, urinishlar soni, qoidabuzarlik chegarasi, tahlilni ko'rsatish yoki yopish, ochish va yopish
+- **Rasmli savollar:** chizma, grafik, xarita yoki formulani rasm sifatida biriktirish (brauzerda kichraytiriladi, server faylni ichidagi baytlar bo'yicha tekshiradi)
+- **Ommaviy import:** **Excel (.xlsx) yoki CSV** fayldan, yoki oddiy matn formatida yuzlab savolni bir martada qo'shish, avval xatolarni tekshirish. Namuna fayl: `public/files/savollar-namuna.xlsx`
+- **Guruhlar:** guruh yaratish, qo'shilish kodi, a'zolar va ularning natijalari, email orqali qo'shish, guruh bo'yicha natijalar filtri
+- **Vaqtinchalik parol:** parolini unutgan talabaga yangi parol berish
+- **Testlar:** savollar soni, vaqt, qiyinlik, urinishlar soni, qoidabuzarlik chegarasi, tahlilni ko'rsatish yoki yopish, **kim uchun** (hamma yoki bitta guruh), **ochilish va yopilish vaqti**, **sertifikat chegarasi**
 - **Natijalar:** filtrlar, faqat shubhali natijalar, har bir urinishning qoidabuzarliklar jurnali va IP manzili, natijani bekor qilish
 - Natijalarni **Excel (CSV)** ko'rinishida yuklab olish
 
@@ -78,6 +103,7 @@ Kirish sahifasida bu hisoblarni bir bosishda to'ldirish mumkin.
 - O'qituvchining barcha imkoniyatlari
 - Foydalanuvchilar: rolni o'zgartirish, bloklash (sessiyalari darhol yopiladi), o'chirish
 - Fanlarni, testlarni o'chirish
+- Ma'lumotlarni saqlash holati va "Hozir saqlash" tugmasi
 
 ## Uch tillilik
 
@@ -138,13 +164,18 @@ edutest/
 │   ├── session.js         # Sessiyalar (bazada token xeshi saqlanadi)
 │   ├── security.js        # scrypt, tasodifiy aralashtirish, so'rovlar chastotasini cheklash
 │   ├── validate.js        # Kiruvchi ma'lumotlarni tekshirish
-│   └── exam.js            # Imtihon mantig'i: tanlash, baholash, qoidabuzarliklar
+│   ├── exam.js            # Imtihon mantig'i: tanlash, baholash, qoidabuzarliklar, guruh va jadval
+│   ├── cert.js            # Sertifikatlar
+│   ├── images.js          # Rasmlarni tekshirish va saqlash
+│   ├── backup.js          # GitHub'ga zaxiralash va tiklash
+│   └── i18n.js            # Server xabarlari tarjimasi
 ├── routes/
 │   ├── auth.js            # Ro'yxat, kirish, profil
 │   ├── student.js         # Fanlar, mashq, urinishlar, kabinet, reyting
-│   └── admin.js           # Boshqaruv paneli API
+│   ├── admin.js           # Boshqaruv paneli API
+│   └── extra.js           # Guruhlar, sertifikatlar, rasmlar, statistika, zaxira
 ├── db/
-│   ├── index.js           # Sxema (8 ta jadval)
+│   ├── index.js           # Sxema (12 ta jadval) va migratsiyalar
 │   ├── seed.js            # Boshlang'ich ma'lumotlar
 │   └── questions/*.js     # Savollar banki (har fan alohida faylda)
 ├── public/
@@ -152,10 +183,14 @@ edutest/
 │   ├── css/style.css
 │   ├── img/               # Logotip, girih naqshi
 │   └── js/
-│       ├── app.js         # Marshrutlash va navigatsiya
+│       ├── app.js         # Marshrutlash, navigatsiya, til va tungi rejim
 │       ├── api.js, ui.js  # Server bilan aloqa, komponentlar, diagrammalar
+│       ├── qr.js          # QR-kod generatori (kutubxonasiz)
+│       ├── xlsx.js        # Excel/CSV o'quvchi (kutubxonasiz)
 │       └── pages/         # Har bir sahifa alohida modul
-├── tests/api.test.js      # Avtomatik testlar
+├── public/sw.js           # Service worker (PWA)
+├── tests/                 # Avtomatik testlar (API, v3, zaxira, tarjimalar)
+├── tools/make-template.js # Excel namuna faylini yaratish
 └── docs/screenshots/      # Skrinshotlar
 ```
 
@@ -172,7 +207,13 @@ attempts       (id, user_id → users, test_id → tests, status, started_at, de
                 finish_reason, score, total, percent, violations, ip)
 attempt_items  (attempt_id → attempts, position, question_id → questions, option_order [JSON], chosen, flagged)
 violations     (id, attempt_id → attempts, type, created_at)
+images         (key [tasodifiy], mime, data BLOB, size, owner_id, created_at)
+groups         (id, name, code UNIQUE, teacher_id → users, created_at)
+group_members  (group_id → groups, user_id → users, joined_at)
+certificates   (code UNIQUE, attempt_id → attempts, user_id, name, meta [JSON], percent, issued_at)
 ```
+
+`tests` jadvalida `group_id`, `opens_at`, `closes_at`, `cert_percent`, `questions` jadvalida `image`, `users` jadvalida `avatar` ustunlari bor. Eski bazalar ishga tushishda avtomatik yangilanadi (`PRAGMA user_version`).
 
 `attempt_items` jadvali har bir talabaga berilgan savollar va variantlarning aynan qaysi tartibda ko'rsatilganini saqlaydi. Shuning uchun baholash va tahlil har doim aniq bo'ladi. Ishlatilgan savol o'chirilmaydi, faqat arxivlanadi, shunda eski natijalar buzilmaydi.
 
@@ -188,6 +229,8 @@ violations     (id, attempt_id → attempts, type, created_at)
 8. **Rollar:** har bir API marshrutida server tomonida tekshiriladi.
 9. **Path traversal:** faqat `public/` papkasidagi fayllar beriladi.
 10. **CSV injeksiya:** eksportda `=`, `+`, `-`, `@` bilan boshlanadigan qiymatlar zararsizlantiriladi.
+11. **Rasmlar:** fayl turi kengaytma bo'yicha emas, ichidagi baytlar bo'yicha aniqlanadi (PNG, JPEG, WebP, GIF). SVG va HTML qabul qilinmaydi. Rasm kaliti tasodifiy, taxmin qilib bo'lmaydi.
+12. **Guruhlar:** o'qituvchi faqat o'z guruhlarini boshqaradi, guruh kodi va sertifikat tekshiruvi so'rovlar chastotasi bilan cheklangan.
 
 ## Savollarni import qilish formati
 
@@ -220,7 +263,11 @@ Suvning kimyoviy formulasi?
 | GET | `/api/attempts/:id` | urinish egasi |
 | PUT | `/api/attempts/:id/answer` | urinish egasi |
 | POST | `/api/attempts/:id/violation`, `/api/attempts/:id/finish` | urinish egasi |
-| GET | `/api/me/dashboard` | tizimga kirgan |
+| GET | `/api/me/dashboard`, `/api/me/stats`, `/api/me/certificates`, `/api/me/groups`, `/api/practice-mistakes` | tizimga kirgan |
+| POST | `/api/groups/join`, `/api/groups/:id/leave`; PUT `/api/me/avatar` | tizimga kirgan |
+| GET | `/api/certificates/:code`, `/api/images/:key` | hamma |
+| GET/POST/PUT/DELETE | `/api/admin/groups...`, `POST /api/images`, `POST /api/admin/users/:id/password` | o'qituvchi, admin |
+| GET/POST | `/api/admin/backup` | admin |
 | GET/POST/PUT/PATCH/DELETE | `/api/admin/questions`, `/api/admin/tests`, `/api/admin/subjects`, `/api/admin/attempts`... | o'qituvchi, admin |
 | GET/PUT/DELETE | `/api/admin/users` | admin |
 
@@ -231,16 +278,20 @@ Suvning kimyoviy formulasi?
 | ![](docs/screenshots/08exam.png) | ![](docs/screenshots/11result.png) |
 | **Boshqaruv paneli** | **Savollar banki** |
 | ![](docs/screenshots/20admin.png) | ![](docs/screenshots/21questions.png) |
+| **Sertifikat** | **Statistika** |
+| ![](docs/screenshots/30cert.png) | ![](docs/screenshots/31stats.png) |
+| **Guruh** | **Tungi rejim** |
+| ![](docs/screenshots/32group.png) | ![](docs/screenshots/33dark.png) |
 
 ## Himoyada aytish mumkin bo'lgan cheklovlar
 
 - Brauzer tomonidagi himoya (nusxa, oyna almashtirish) **aniqlash** vositasi. Telefon bilan ekranni suratga olishni hech bir veb-sayt to'liq to'xtata olmaydi. Shuning uchun asosiy himoya serverda: har kimga alohida variant va suv belgisi.
 - Mashq rejimi o'qitish uchun mo'ljallangan va to'g'ri javoblarni ko'rsatadi. Imtihon savollarini mashqdan alohida saqlash keyingi bosqichda qo'shilishi mumkin.
 - SQLite bitta serverdagi o'quv muassasasi uchun yetarli. Juda katta yuklamada PostgreSQL'ga o'tkazish mumkin.
+- GitHub'ga zaxiralash bir necha daqiqada bir bo'ladi: server kutilmaganda "qulasa", oxirgi daqiqalardagi o'zgarishlar yo'qolishi mumkin. Odatiy qayta ishga tushishda (yangilanish, uxlash) oxirgi nusxa to'xtashdan oldin saqlanadi.
 
 ## Rivojlantirish g'oyalari
 
-- Rasmli va bir nechta to'g'ri javobli savollar
-- Guruhlarga test tayinlash va muddat belgilash
-- Natijalarni PDF sertifikat ko'rinishida berish
+- Bir nechta to'g'ri javobli va ochiq javobli savollar
+- Email orqali parolni tiklash
 - Veb-kamera orqali proktoring

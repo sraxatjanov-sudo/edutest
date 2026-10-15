@@ -21,6 +21,7 @@ export default async function auth(main, { mode }, { state, setTitle, navigate }
         <div class="field"><label for="email">Email</label><input class="input" id="email" type="email" autocomplete="email" required></div>
         <div class="field"><label for="password">${t('Parol')}</label><input class="input" id="password" type="password" autocomplete="${reg ? 'new-password' : 'current-password'}" required>
           ${reg ? `<span class="hint">${t("Kamida 8 ta belgi, harf va raqam bo'lsin")}</span>` : ''}</div>
+        ${reg ? '' : `<details class="forgot"><summary>${t('Parolni unutdingizmi?')}</summary><p class="small muted">${t("O'qituvchingiz yoki administratorga murojaat qiling: u sizga vaqtinchalik parol beradi. Kirgandan keyin uni profil sahifasida o'zgartiring.")}</p></details>`}
         <p class="form-error" id="err" role="alert"></p>
         <button class="btn btn-lg btn-block" id="submit">${reg ? t("Ro'yxatdan o'tish") : t('Kirish')}</button>
         <p class="small muted">${reg ? `${t('Hisobingiz bormi?')} <a href="/kirish" data-link>${t('Kirish')}</a>` : `${t("Hisobingiz yo'qmi?")} <a href="/royxat" data-link>${t("Ro'yxatdan o'ting")}</a>`}</p>

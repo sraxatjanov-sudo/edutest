@@ -1,5 +1,5 @@
 import { put } from '../api.js';
-import { esc, toast, roleLabel, t } from '../ui.js';
+import { esc, icon, toast, roleLabel, avatar, imageToDataUrl, t } from '../ui.js';
 import { setUser } from '../app.js';
 
 export default async function profile(main, _p, { state, setTitle }) {
@@ -8,6 +8,14 @@ export default async function profile(main, _p, { state, setTitle }) {
   main.innerHTML = `<div class="wrap page" style="max-width:760px">
     <div class="page-head"><div><h1>${t('Profil sozlamalari')}</h1><p class="muted">${esc(u.email)}, ${roleLabel[u.role]}</p></div></div>
     <div class="stack" style="--gap:20px">
+      <section class="panel panel-pad"><div class="avatar-edit">
+        <div id="av">${avatar(u, 'avatar avatar-xl')}</div>
+        <div class="stack" style="--gap:10px"><h2 style="font-size:1.1rem">${t('Profil rasmi')}</h2>
+          <p class="small muted">${t("Reytingda, guruhda va menyuda ko'rinadi. Rasm kvadrat shaklga qirqiladi.")}</p>
+          <div class="row"><button class="btn btn-ghost btn-sm" id="avpick">${icon('image')} ${t('Rasm tanlash')}</button>
+            <button class="btn btn-quiet btn-sm" id="avrm" ${u.avatar ? '' : 'hidden'}>${icon('trash')} ${t("O'chirish")}</button></div>
+          <input type="file" id="avfile" accept="image/png,image/jpeg,image/webp" hidden></div>
+      </div></section>
       <form class="panel" id="pf" novalidate>
         <div class="panel-head"><h2>${t("Shaxsiy ma'lumotlar")}</h2></div>
         <div class="panel-body form-grid">
@@ -25,6 +33,23 @@ export default async function profile(main, _p, { state, setTitle }) {
         <div class="modal-foot"><p class="form-error grow" id="werr"></p><button class="btn">${t('Parolni yangilash')}</button></div>
       </form>
     </div></div>`;
+
+  const setAvatar = async (data) => {
+    try {
+      const r = await put('/api/me/avatar', { data });
+      setUser(r.user);
+      main.querySelector('#av').innerHTML = avatar(r.user, 'avatar avatar-xl');
+      main.querySelector('#avrm').hidden = !r.user.avatar;
+      toast(data ? t('Profil rasmi yangilandi') : t("Profil rasmi o'chirildi"), 'good');
+    } catch (err) { toast(err.message, 'bad'); }
+  };
+  main.querySelector('#avpick').addEventListener('click', () => main.querySelector('#avfile').click());
+  main.querySelector('#avfile').addEventListener('change', async (e) => {
+    const f = e.target.files[0]; e.target.value = '';
+    if (!f) return;
+    try { await setAvatar(await imageToDataUrl(f, { max: 320, square: true, quality: 0.85 })); } catch (err) { toast(err.message, 'bad'); }
+  });
+  main.querySelector('#avrm').addEventListener('click', () => setAvatar(null));
 
   main.querySelector('#pf').addEventListener('submit', async (e) => {
     e.preventDefault();

@@ -1,8 +1,6 @@
 // Ma'lumotlar bazasi ulanishi va sxemasi (Node.js ichidagi SQLite)
 const { DatabaseSync } = require('node:sqlite');
-const path = require('node:path');
-
-const file = process.env.DB_FILE || path.join(__dirname, '..', 'edutest.db');
+const file = require('./file');
 const db = new DatabaseSync(file);
 
 db.exec(`
@@ -100,6 +98,44 @@ CREATE TABLE IF NOT EXISTS violations (
   created_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_violations_attempt ON violations(attempt_id);
+
+-- Rasmlar (savol rasmlari va profil rasmlari). Kalit — tasodifiy, taxmin qilib bo'lmaydigan matn
+CREATE TABLE IF NOT EXISTS images (
+  key TEXT PRIMARY KEY,
+  mime TEXT NOT NULL,
+  data BLOB NOT NULL,
+  size INTEGER NOT NULL,
+  owner_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at INTEGER NOT NULL
+);
+
+-- Guruhlar / sinflar: o'qituvchi yaratadi, talabalar kod orqali qo'shiladi
+CREATE TABLE IF NOT EXISTS groups (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  code TEXT NOT NULL UNIQUE,
+  teacher_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS group_members (
+  group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  joined_at INTEGER NOT NULL,
+  PRIMARY KEY (group_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_members_user ON group_members(user_id);
+
+-- Sertifikatlar: berilgan paytdagi ma'lumotlar nusxasi saqlanadi (test o'zgarsa ham sertifikat o'zgarmaydi)
+CREATE TABLE IF NOT EXISTS certificates (
+  code TEXT PRIMARY KEY,
+  attempt_id INTEGER NOT NULL UNIQUE REFERENCES attempts(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  meta TEXT NOT NULL,
+  percent INTEGER NOT NULL,
+  issued_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_cert_user ON certificates(user_id);
 `);
 
 // Migratsiya: eski bazalarga yangi ustunlarni qo'shish
@@ -110,6 +146,13 @@ function addColumn(table, column, def) {
 addColumn('subjects', 'i18n', 'TEXT');
 addColumn('tests', 'i18n', 'TEXT');
 addColumn('questions', 'i18n', 'TEXT');
+// v3: rasmlar, guruhlar, jadval, sertifikatlar
+addColumn('questions', 'image', 'TEXT');
+addColumn('users', 'avatar', 'TEXT');
+addColumn('tests', 'group_id', 'INTEGER REFERENCES groups(id) ON DELETE SET NULL');
+addColumn('tests', 'opens_at', 'INTEGER');
+addColumn('tests', 'closes_at', 'INTEGER');
+addColumn('tests', 'cert_percent', 'INTEGER NOT NULL DEFAULT 0');
 
 // tr(i18n, 'maydon', asosiy_qiymat) — so'rovdagi joriy tilga mos tarjimani qaytaradi
 const { pick } = require('../lib/i18n');

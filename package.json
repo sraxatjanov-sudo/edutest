@@ -1,6 +1,6 @@
 {
   "name": "edutest",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "description": "EduTest — fanlar bo'yicha onlayn test va imtihon platformasi (yakuniy loyiha). O'zbek, rus va qoraqalpoq tillarida.",
   "main": "server.js",
   "scripts": {

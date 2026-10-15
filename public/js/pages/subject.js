@@ -1,5 +1,5 @@
 import { get } from '../api.js';
-import { esc, icon, fmtNum, diffLabel, pctClass, t } from '../ui.js';
+import { esc, icon, fmtNum, fmtDate, diffLabel, pctClass, t } from '../ui.js';
 
 export default async function subject(main, { slug }, { state, setTitle, navigate }) {
   const { subject: s, tests, difficulty } = await get(`/api/subjects/${encodeURIComponent(slug)}`);
@@ -11,12 +11,17 @@ export default async function subject(main, { slug }, { state, setTitle, navigat
     const blocked = left !== null && left <= 0 && !x.my?.active;
     const action = !state.user
       ? `<a class="btn" href="/kirish" data-link>${t('Kirib, boshlash')}</a>`
+      : x.state === 'soon' && state.user.role === 'student' ? `<button class="btn" disabled>${icon('calendar')} ${t('{date} da ochiladi', { date: fmtDate(x.opens_at) })}</button>`
+      : x.state === 'closed' && state.user.role === 'student' && !x.my?.active ? `<button class="btn" disabled>${t('Muddati tugagan')}</button>`
       : x.my?.active
         ? `<a class="btn btn-saffron" href="/test/${x.id}" data-link>${icon('play')} ${t('Davom ettirish')}</a>`
         : blocked ? `<button class="btn" disabled>${t('Urinishlar tugagan')}</button>`
           : `<a class="btn" href="/test/${x.id}" data-link>${icon('play')} ${t('Boshlash')}</a>`;
     return `<article class="test-row">
       <div>
+        <div class="row" style="gap:8px;margin-bottom:4px">${x.group_name ? `<span class="tag tag-lapis">${icon('users')} ${esc(x.group_name)}</span>` : ''}
+          ${x.cert_percent ? `<span class="tag tag-saffron" title="${t('Kamida {p}% natija uchun sertifikat beriladi', { p: x.cert_percent })}">${icon('award')} ${t('Sertifikat')}</span>` : ''}
+          ${x.closes_at && x.state !== 'closed' ? `<span class="tag tag-warn">${icon('clock')} ${t('{date} gacha', { date: fmtDate(x.closes_at) })}</span>` : ''}</div>
         <h3>${esc(x.title)}</h3>
         <p class="muted small">${esc(x.description || '')}</p>
         <div class="facts">

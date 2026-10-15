@@ -1,6 +1,6 @@
 // Imtihon sahifasi: qoidalar, savollar, taymer va nusxa olishga qarshi himoya
 import { get, post, put } from '../api.js';
-import { esc, rich, icon, KEYS, fmtClock, diffLabel, modal, toast, t } from '../ui.js';
+import { esc, rich, icon, KEYS, fmtClock, fmtDate, diffLabel, modal, toast, qimage, t } from '../ui.js';
 
 const fsSupported = () => Boolean(document.documentElement.requestFullscreen);
 const inFullscreen = () => Boolean(document.fullscreenElement);
@@ -27,6 +27,10 @@ export default async function exam(main, { id }, { state, setTitle, navigate }) 
           <div class="kpi"><div class="v">${diffLabel[tt.difficulty]}</div><div class="l">${t('qiyinlik')}</div></div>
           <div class="kpi"><div class="v">${left === null ? '∞' : Math.max(0, left)}</div><div class="l">${t('qolgan urinish')}</div></div>
         </div>
+        ${tt.locked === 'not_open' ? `<div class="notice notice-info">${icon('calendar')}<div><b>${t('Test hali ochilmagan.')}</b> ${t('{date} da ochiladi.', { date: fmtDate(tt.opensAt) })}</div></div>` : ''}
+        ${tt.locked === 'closed' && !resume ? `<div class="notice notice-bad">${icon('lock')}<div><b>${t('Test topshirish muddati tugagan')}.</b></div></div>` : ''}
+        ${tt.closesAt && !tt.locked ? `<div class="notice notice-warn">${icon('clock')}<div>${t('Test {date} da yopiladi. Imtihon vaqti shu paytdan oshmaydi.', { date: fmtDate(tt.closesAt) })}</div></div>` : ''}
+        ${tt.certPercent ? `<div class="notice notice-good">${icon('award')}<div>${t('Kamida {p}% natija olsangiz, QR-kodli sertifikat beriladi.', { p: tt.certPercent })}</div></div>` : ''}
         ${resume ? `<div class="notice notice-warn">${icon('clock')}<div><b>${t('Sizda tugallanmagan urinish bor.')}</b> ${t('Qolgan vaqt: {time}. Javoblaringiz saqlangan, davom ettirishingiz mumkin.', { time: fmtClock(resume.remaining) })}</div></div>` : ''}
         <div>
           <h2 style="font-size:1.1rem">${t('Imtihon qoidalari')}</h2>
@@ -48,7 +52,8 @@ export default async function exam(main, { id }, { state, setTitle, navigate }) 
     </div></div></div>`;
 
   const go = main.querySelector('#go');
-  main.querySelector('#agree').addEventListener('change', (e) => { go.disabled = !e.target.checked || (left !== null && left <= 0 && !resume); });
+  const lockedNow = (tt.locked && !resume);
+  main.querySelector('#agree').addEventListener('change', (e) => { go.disabled = !e.target.checked || lockedNow || (left !== null && left <= 0 && !resume); });
   if (left !== null && left <= 0 && !resume) main.querySelector('#err').textContent = t('Bu test uchun urinishlar soni tugagan.');
 
   go.addEventListener('click', async () => {
@@ -138,7 +143,7 @@ export default async function exam(main, { id }, { state, setTitle, navigate }) 
       $q.innerHTML = `
         <div class="qcard-top"><span class="qnum">${t('{n}-savol / {total}', { n: cur + 1, total: N })}</span>
           <button class="btn btn-ghost btn-sm flag-btn" id="flag" aria-pressed="${q.flagged}">${icon('flag')} ${q.flagged ? t('Belgilangan') : t('Keyinroq qaytaman')}</button></div>
-        <div class="qtext">${rich(q.text)}</div>
+        <div class="qtext">${rich(q.text)}</div>${qimage(q.image)}
         <div class="options" role="radiogroup" aria-label="${t('Javob variantlari')}">
           ${q.options.map((o, i) => `<button class="opt" role="radio" aria-checked="${q.chosen === i}" data-i="${i}"><span class="key">${KEYS[i]}</span><span>${rich(o)}</span></button>`).join('')}
         </div>

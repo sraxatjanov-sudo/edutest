@@ -1,19 +1,29 @@
 import { get, post } from '../api.js';
-import { esc, rich, icon, KEYS, diffDots, t } from '../ui.js';
+import { esc, rich, icon, KEYS, diffDots, qimage, t } from '../ui.js';
 
-export default async function practice(main, { slug }, { setTitle }) {
+export default async function practice(main, { slug, mode }, { setTitle }) {
   const qs = new URLSearchParams(location.search);
-  const { subject, items } = await get(`/api/practice/${encodeURIComponent(slug)}?count=${Number(qs.get('count')) || 10}&difficulty=${Number(qs.get('difficulty')) || 0}`);
-  setTitle(t('Mashq: {name}', { name: subject.name }));
+  const mistakes = mode === 'mistakes';
+  let subject, items;
+  if (mistakes) {
+    ({ items } = await get(`/api/practice-mistakes?count=${Number(qs.get('count')) || 15}`));
+    subject = { name: t('Xatolar ustida ishlash'), slug: null };
+  } else {
+    ({ subject, items } = await get(`/api/practice/${encodeURIComponent(slug)}?count=${Number(qs.get('count')) || 10}&difficulty=${Number(qs.get('difficulty')) || 0}`));
+  }
+  setTitle(mistakes ? subject.name : t('Mashq: {name}', { name: subject.name }));
   const results = [];
   let i = 0;
 
   const shell = (inner) => `<div class="wrap page"><div class="practice-shell">
-    <nav class="crumbs"><a href="/fanlar" data-link>${t('Fanlar')}</a><span>/</span><a href="/fan/${esc(subject.slug)}" data-link>${esc(subject.name)}</a><span>/</span><span>${t('Mashq')}</span></nav>
+    ${mistakes ? `<nav class="crumbs"><a href="/statistika" data-link>${t('Statistika')}</a><span>/</span><span>${esc(subject.name)}</span></nav>`
+      : `<nav class="crumbs"><a href="/fanlar" data-link>${t('Fanlar')}</a><span>/</span><a href="/fan/${esc(subject.slug)}" data-link>${esc(subject.name)}</a><span>/</span><span>${t('Mashq')}</span></nav>`}
     ${inner}</div></div>`;
 
   if (!items.length) {
-    main.innerHTML = shell(`<div class="panel empty"><h3>${t("Bu sozlamalar bo'yicha savol topilmadi")}</h3><p>${t('Boshqa qiyinlik darajasini tanlang.')}</p></div>`);
+    main.innerHTML = shell(mistakes
+      ? `<div class="panel empty"><h3>${t("Xato qilingan savollar yo'q")}</h3><p>${t("Ajoyib! Testlarda xato qilgan savollaringiz shu yerda to'planadi.")}</p><a class="btn" href="/fanlar" data-link>${t('Test topshirish')}</a></div>`
+      : `<div class="panel empty"><h3>${t("Bu sozlamalar bo'yicha savol topilmadi")}</h3><p>${t('Boshqa qiyinlik darajasini tanlang.')}</p></div>`);
     return;
   }
 
@@ -24,11 +34,11 @@ export default async function practice(main, { slug }, { setTitle }) {
   function show() {
     const q = items[i];
     main.innerHTML = shell(`
-      <div class="practice-top"><h1 style="font-size:1.4rem">${esc(t('Mashq: {name}', { name: subject.name }))}</h1><span class="small muted num">${i + 1} / ${items.length}</span></div>
+      <div class="practice-top"><h1 style="font-size:1.4rem">${esc(mistakes ? subject.name : t('Mashq: {name}', { name: subject.name }))}</h1><span class="small muted num">${i + 1} / ${items.length}</span></div>
       ${dots()}
       <div class="qcard" style="margin-top:16px">
-        <div class="qcard-top"><span class="qnum">${t('{n}-savol', { n: i + 1 })}</span>${diffDots(q.difficulty)}</div>
-        <div class="qtext">${rich(q.text)}</div>
+        <div class="qcard-top"><span class="qnum">${t('{n}-savol', { n: i + 1 })}${q.subject ? ` · <span class="muted">${esc(q.subject)}</span>` : ''}</span>${diffDots(q.difficulty)}</div>
+        <div class="qtext">${rich(q.text)}</div>${qimage(q.image)}
         <div class="options" role="radiogroup">${q.options.map((o, k) => `<button class="opt" data-k="${k}"><span class="key">${KEYS[k]}</span><span>${rich(o)}</span></button>`).join('')}</div>
         <div id="fb"></div>
         <div class="qnav"><span></span><button class="btn" id="next" hidden>${i + 1 < items.length ? t('Keyingi savol') : t("Natijani ko'rish")} ${icon('right')}</button></div>
@@ -67,7 +77,7 @@ export default async function practice(main, { slug }, { setTitle }) {
       <p class="muted" style="margin-top:8px">${p >= 71 ? t("Yaxshi natija. Endi haqiqiy imtihonda sinab ko'ring.") : t('Xatolar ustida ishlash uchun mashqni yana bir bor takrorlang.')}</p>
       <div class="row" style="justify-content:center;margin-top:22px">
         <a class="btn btn-ghost" href="${esc(location.pathname + location.search)}" data-link>${icon('shuffle')} ${t('Yangi savollar bilan takrorlash')}</a>
-        <a class="btn" href="/fan/${esc(subject.slug)}" data-link>${t('Imtihon topshirish')}</a>
+        ${mistakes ? `<a class="btn" href="/statistika" data-link>${t('Statistika')}</a>` : `<a class="btn" href="/fan/${esc(subject.slug)}" data-link>${t('Imtihon topshirish')}</a>`}
       </div></div>`);
   }
 

@@ -7,6 +7,8 @@ const crypto = require('node:crypto');
 const db = require('./index');
 const { hashPassword, shuffle } = require('../lib/security');
 const { t } = require('../lib/i18n');
+const cert = require('../lib/cert');
+const images = require('../lib/images');
 
 const QDIR = path.join(__dirname, 'questions');
 const TDIR = path.join(QDIR, 'i18n');
@@ -47,8 +49,8 @@ function questionI18n(s, i) {
 }
 
 const SEED_TESTS = [
-  { title: '{name}: umumiy test', description: "{name} fani bo'yicha barcha mavzulardan 20 ta tasodifiy savol.", count: 20, time: 25, diff: 0 },
-  { title: '{name}: tezkor sinov', description: 'Asosiy tushunchalarni tez takrorlash uchun 10 ta oson savol.', count: 10, time: 8, diff: 1 },
+  { title: '{name}: umumiy test', description: "{name} fani bo'yicha barcha mavzulardan 20 ta tasodifiy savol.", count: 20, time: 25, diff: 0, cert: 71 },
+  { title: '{name}: tezkor sinov', description: 'Asosiy tushunchalarni tez takrorlash uchun 10 ta oson savol.', count: 10, time: 8, diff: 1, cert: 0 },
 ];
 
 function testI18n(s, tpl) {
@@ -71,9 +73,9 @@ function insertSubject(s, now) {
     insQ.run(sid, text, JSON.stringify([right, ...wrong]), 0, explanation || null, difficulty || 2, json(questionI18n(s, i)), now);
   });
   const insTest = db.prepare(`INSERT INTO tests (subject_id, title, description, question_count, time_limit, difficulty,
-    max_attempts, max_violations, show_review, is_active, i18n, created_at) VALUES (?, ?, ?, ?, ?, ?, 0, 3, 1, 1, ?, ?)`);
+    max_attempts, max_violations, show_review, is_active, i18n, cert_percent, created_at) VALUES (?, ?, ?, ?, ?, ?, 0, 3, 1, 1, ?, ?, ?)`);
   return SEED_TESTS.map((tpl) => Number(insTest.run(sid, t('uz', tpl.title, { name: s.name }), t('uz', tpl.description, { name: s.name }),
-    tpl.count, tpl.time, tpl.diff, json(testI18n(s, tpl)), now).lastInsertRowid));
+    tpl.count, tpl.time, tpl.diff, json(testI18n(s, tpl)), tpl.cert, now).lastInsertRowid));
 }
 
 // Mavjud bazani fayllardagi savollar banki bilan moslash
@@ -98,8 +100,39 @@ function syncBank() {
   return { added, translated };
 }
 
+// Bir martalik yangilanishlar (PRAGMA user_version orqali)
+const SCHEMA_VERSION = 3;
+function upgrade() {
+  const ver = db.prepare('PRAGMA user_version').get().user_version;
+  if (ver < 3) {
+    db.tx(() => {
+      // Umumiy testlarda 71% dan yuqori natija uchun sertifikat
+      for (const s of db.prepare('SELECT id, name FROM subjects').all()) {
+        db.prepare('UPDATE tests SET cert_percent = 71 WHERE subject_id = ? AND title = ? AND cert_percent = 0')
+          .run(s.id, t('uz', SEED_TESTS[0].title, { name: s.name }));
+      }
+      demoGroup(Date.now());
+    });
+  }
+  db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
+}
+
+// Namunaviy guruh: o'qituvchi "211-guruh"ni ochgan, shu guruhdagi talabalar a'zo
+function demoGroup(now) {
+  if (db.prepare('SELECT COUNT(*) AS c FROM groups').get().c) return;
+  const teacher = db.prepare("SELECT id FROM users WHERE email = 'teacher@edutest.uz'").get();
+  if (!teacher) return;
+  const gid = Number(db.prepare('INSERT INTO groups (name, code, teacher_id, created_at) VALUES (?, ?, ?, ?)')
+    .run('211-guruh', 'K7M2QX', teacher.id, now).lastInsertRowid);
+  const ins = db.prepare('INSERT OR IGNORE INTO group_members (group_id, user_id, joined_at) VALUES (?, ?, ?)');
+  for (const u of db.prepare("SELECT id FROM users WHERE role = 'student' AND group_name = '211-guruh'").all()) ins.run(gid, u.id, now);
+}
+
 function seed() {
-  if (db.prepare('SELECT COUNT(*) AS c FROM users').get().c > 0) { syncBank(); return false; }
+  if (db.prepare('SELECT COUNT(*) AS c FROM users').get().c > 0) {
+    syncBank(); upgrade(); cert.backfill(); images.purgeOrphans();
+    return false;
+  }
   const now = Date.now();
 
   db.tx(() => {
@@ -151,7 +184,10 @@ function seed() {
         for (const it of items) insItem.run(aid, ...it);
       });
     });
+    demoGroup(now);
   });
+  db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
+  cert.backfill();
   return true;
 }
 

@@ -46,10 +46,18 @@ module.exports = (r) => {
   r.get('/api/subjects/:slug', ({ res, params, user }) => {
     const s = subjectBySlug(params.slug);
     const counts = db.prepare(`SELECT difficulty, COUNT(*) AS c FROM questions WHERE subject_id = ? AND archived = 0 GROUP BY difficulty`).all(s.id);
+    // Guruhga biriktirilgan testlarni faqat shu guruh a'zolari (va o'qituvchilar) ko'radi
+    const staff = user && user.role !== 'student';
     const tests = db.prepare(`SELECT t.id, tr(t.i18n, 'title', t.title) AS title, tr(t.i18n, 'description', t.description) AS description, t.question_count, t.time_limit, t.difficulty, t.max_attempts, t.max_violations,
+        t.opens_at, t.closes_at, t.cert_percent, g.name AS group_name,
         (SELECT COUNT(*) FROM attempts a WHERE a.test_id = t.id AND a.status = 'finished') AS attempts,
         (SELECT ROUND(AVG(a.percent)) FROM attempts a WHERE a.test_id = t.id AND a.status = 'finished') AS avg_percent
-      FROM tests t WHERE t.subject_id = ? AND t.is_active = 1 ORDER BY t.id`).all(s.id);
+      FROM tests t LEFT JOIN groups g ON g.id = t.group_id
+      WHERE t.subject_id = ? AND t.is_active = 1
+        AND (? = 1 OR t.group_id IS NULL OR t.group_id IN (SELECT group_id FROM group_members WHERE user_id = ?))
+      ORDER BY t.group_id IS NULL, t.id`).all(s.id, staff ? 1 : 0, user ? user.id : 0);
+    const now = Date.now();
+    for (const t of tests) t.state = t.opens_at && now < t.opens_at ? 'soon' : t.closes_at && now > t.closes_at ? 'closed' : 'open';
     if (user) {
       const mine = db.prepare(`SELECT test_id, COUNT(*) AS used, MAX(percent) AS best,
           SUM(status = 'active') AS active FROM attempts WHERE user_id = ? GROUP BY test_id`).all(user.id);
@@ -73,9 +81,9 @@ module.exports = (r) => {
     const s = subjectBySlug(params.slug);
     const count = Math.min(Math.max(Number(query.get('count')) || 10, 5), 30);
     const difficulty = [1, 2, 3].includes(Number(query.get('difficulty'))) ? Number(query.get('difficulty')) : 0;
-    const pool = db.prepare(`SELECT id, tr(i18n, 'text', text) AS text, tr(i18n, 'options', options) AS options, difficulty FROM questions WHERE subject_id = ? AND archived = 0
+    const pool = db.prepare(`SELECT id, tr(i18n, 'text', text) AS text, tr(i18n, 'options', options) AS options, difficulty, image FROM questions WHERE subject_id = ? AND archived = 0
       AND (? = 0 OR difficulty = ?)`).all(s.id, difficulty, difficulty);
-    const items = shuffle(pool).slice(0, count).map((q) => ({ id: q.id, text: q.text, difficulty: q.difficulty, options: shuffle(JSON.parse(q.options)) }));
+    const items = shuffle(pool).slice(0, count).map((q) => ({ id: q.id, text: q.text, image: q.image || null, difficulty: q.difficulty, options: shuffle(JSON.parse(q.options)) }));
     send(res, 200, { subject: { name: pick(s.i18n, 'name', s.name), slug: s.slug, color: s.color }, items });
   });
 
@@ -93,7 +101,7 @@ module.exports = (r) => {
   r.get('/api/sample', ({ res }) => {
     const q = db.prepare(`SELECT q.id, tr(q.i18n, 'text', q.text) AS text, tr(q.i18n, 'options', q.options) AS options, tr(s.i18n, 'name', s.name) AS subject
       FROM questions q JOIN subjects s ON s.id = q.subject_id
-      WHERE q.archived = 0 AND q.difficulty = 1 AND q.text NOT LIKE '%\`%' ORDER BY RANDOM() LIMIT 1`).get();
+      WHERE q.archived = 0 AND q.difficulty = 1 AND q.image IS NULL AND q.text NOT LIKE '%\`%' ORDER BY RANDOM() LIMIT 1`).get();
     send(res, 200, q ? { id: q.id, text: q.text, subject: q.subject, options: shuffle(JSON.parse(q.options)) } : {});
   });
 
@@ -101,6 +109,8 @@ module.exports = (r) => {
   r.get('/api/tests/:id', ({ res, params, user }) => {
     const t = exam.getTest(Number(params.id));
     if (!t || (!t.is_active && user.role === 'student')) throw new HttpError(404, 'Test topilmadi yoki yopilgan');
+    const acc = exam.access(t, user);
+    if (!acc.ok && !acc.reason) throw new HttpError(acc.status, acc.error);
     const pool = db.prepare(`SELECT COUNT(*) AS c FROM questions WHERE subject_id = ? AND archived = 0 AND (? = 0 OR difficulty = ?)`)
       .get(t.subject_id, t.difficulty, t.difficulty).c;
     const used = db.prepare('SELECT COUNT(*) AS c FROM attempts WHERE user_id = ? AND test_id = ?').get(user.id, t.id).c;
@@ -109,7 +119,8 @@ module.exports = (r) => {
     send(res, 200, {
       test: { id: t.id, title: t.title, description: t.description, subject: t.subject_name, slug: t.subject_slug, color: t.subject_color,
         questionCount: Math.min(t.question_count, pool), timeLimit: t.time_limit, difficulty: t.difficulty, maxAttempts: t.max_attempts,
-        maxViolations: t.max_violations, showReview: Boolean(t.show_review) },
+        maxViolations: t.max_violations, showReview: Boolean(t.show_review), opensAt: t.opens_at, closesAt: t.closes_at,
+        certPercent: t.cert_percent, locked: acc.ok ? null : acc.reason },
       used, active: active ? { id: active.id, remaining: Math.round((active.deadline - Date.now()) / 1000) } : null,
     });
   }, { auth: true });
@@ -182,11 +193,13 @@ module.exports = (r) => {
     const slug = query.get('subject') || '';
     const since = periodStart(query.get('period'));
     const subject = slug ? subjectBySlug(slug) : null;
-    const rows = db.prepare(`SELECT u.id, u.name, u.group_name AS "group", COUNT(a.id) AS attempts, ROUND(AVG(a.percent)) AS avg,
+    const gid = Number(query.get('group')) || 0;
+    const rows = db.prepare(`SELECT u.id, u.name, u.group_name AS "group", u.avatar, COUNT(a.id) AS attempts, ROUND(AVG(a.percent)) AS avg,
         MAX(a.percent) AS best, SUM(a.score) AS points
       FROM attempts a JOIN users u ON u.id = a.user_id JOIN tests t ON t.id = a.test_id
       WHERE a.status = 'finished' AND u.role = 'student' AND a.finished_at >= ? AND (? = 0 OR t.subject_id = ?)
-      GROUP BY u.id ORDER BY avg DESC, points DESC, attempts DESC LIMIT 50`).all(since, subject ? subject.id : 0, subject ? subject.id : 0);
+        AND (? = 0 OR u.id IN (SELECT user_id FROM group_members WHERE group_id = ?))
+      GROUP BY u.id ORDER BY avg DESC, points DESC, attempts DESC LIMIT 50`).all(since, subject ? subject.id : 0, subject ? subject.id : 0, gid, gid);
     send(res, 200, { leaders: rows.map((x) => ({ ...x, me: user ? x.id === user.id : false, id: undefined })) });
   });
 };

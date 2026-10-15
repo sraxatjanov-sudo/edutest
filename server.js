@@ -3,11 +3,7 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const db = require('./db');
-const { seed } = require('./db/seed');
-const Router = require('./lib/router');
-const session = require('./lib/session');
-const exam = require('./lib/exam');
+const backup = require('./lib/backup');
 const { send, readBody, HttpError, SECURITY_HEADERS } = require('./lib/http');
 const i18n = require('./lib/i18n');
 
@@ -16,15 +12,25 @@ const PUBLIC = path.join(__dirname, 'public');
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json', '.woff2': 'font/woff2',
-  '.webmanifest': 'application/manifest+json',
+  '.webmanifest': 'application/manifest+json', '.webp': 'image/webp', '.jpg': 'image/jpeg',
+  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 };
 
-if (seed()) console.log('Baza yaratildi va boshlang\'ich ma\'lumotlar qo\'shildi.');
-
-const router = new Router();
-require('./routes/auth')(router);
-require('./routes/student')(router);
-require('./routes/admin')(router);
+// Baza va marshrutlar ishga tushishda yuklanadi (avval zaxiradan tiklash kerak bo'lishi mumkin)
+let db, session, exam, router;
+function boot() {
+  db = require('./db');
+  const { seed } = require('./db/seed');
+  if (seed()) console.log('Baza yaratildi va boshlang\'ich ma\'lumotlar qo\'shildi.');
+  session = require('./lib/session');
+  exam = require('./lib/exam');
+  const Router = require('./lib/router');
+  router = new Router();
+  require('./routes/auth')(router);
+  require('./routes/student')(router);
+  require('./routes/admin')(router);
+  require('./routes/extra')(router);
+}
 
 function serveStatic(req, res, pathname) {
   let rel;
@@ -89,17 +95,27 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-// Fon jarayonlari: vaqti tugagan testlarni yakunlash va eskirgan sessiyalarni tozalash
-setInterval(() => { try { exam.sweepExpired(); } catch (e) { console.error(e); } }, 15e3).unref();
-setInterval(() => { try { session.purgeExpired(); } catch (e) { console.error(e); } }, 36e5).unref();
+(async function main() {
+  await backup.restore(require('./db/file'));
+  boot();
+  // Fon jarayonlari: vaqti tugagan testlarni yakunlash va eskirgan sessiyalarni tozalash
+  setInterval(() => { try { exam.sweepExpired(); } catch (e) { console.error(e); } }, 15e3).unref();
+  setInterval(() => { try { session.purgeExpired(); } catch (e) { console.error(e); } }, 36e5).unref();
+  backup.start();
+  server.listen(PORT, () => {
+    console.log(`EduTest ishga tushdi: http://localhost:${PORT}`);
+  });
+})().catch((e) => { console.error('Ishga tushirishda xato:', e); process.exit(1); });
 
-server.listen(PORT, () => {
-  console.log(`EduTest ishga tushdi: http://localhost:${PORT}`);
-});
-
-function shutdown() {
-  server.close(() => { db.close(); process.exit(0); });
-  setTimeout(() => process.exit(0), 2000).unref();
+let stopping = false;
+async function shutdown() {
+  if (stopping) return;
+  stopping = true;
+  server.close();
+  setTimeout(() => process.exit(0), 25e3).unref();
+  try { await backup.final(); } catch (e) { console.error(e); }
+  try { db?.close(); } catch { /* */ }
+  process.exit(0);
 }
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);

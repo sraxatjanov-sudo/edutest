@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" stroke="#1F4FA3" stroke-width="1.2" stroke-linejoin="round">
+  <!-- Sakkiz qirrali yulduz: ikki kvadratning kesishmasi (girih naqshi) -->
+  <path d="M50 18 L59.4 27.4 L72.6 27.4 L72.6 40.6 L82 50 L72.6 59.4 L72.6 72.6 L59.4 72.6 L50 82 L40.6 72.6 L27.4 72.6 L27.4 59.4 L18 50 L27.4 40.6 L27.4 27.4 L40.6 27.4 Z"/>
+  <path d="M50 32 L62.7 37.3 L68 50 L62.7 62.7 L50 68 L37.3 62.7 L32 50 L37.3 37.3 Z"/>
+  <path d="M50 0 L50 18 M50 82 L50 100 M0 50 L18 50 M82 50 L100 50"/>
+  <path d="M0 0 L27.4 27.4 M100 0 L72.6 27.4 M0 100 L27.4 72.6 M100 100 L72.6 72.6"/>
+  <path d="M0 18 L18 0 M82 0 L100 18 M0 82 L18 100 M82 100 L100 82"/>
+</svg>

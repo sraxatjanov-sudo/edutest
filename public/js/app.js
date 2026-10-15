@@ -1,6 +1,6 @@
 // EduTest — mijoz ilovasi: marshrutlash, foydalanuvchi holati, navigatsiya, til tanlash
 import { get, post } from './api.js';
-import { esc, icon, initials, roleLabel, toast } from './ui.js';
+import { esc, icon, avatar, roleLabel, toast } from './ui.js';
 import { t, LANGS, getLang, setLang } from './i18n.js';
 
 export const state = { user: null };
@@ -13,6 +13,10 @@ const routes = [
   ['/fanlar', () => import('./pages/subjects.js')],
   ['/fan/:slug', () => import('./pages/subject.js')],
   ['/mashq/:slug', () => import('./pages/practice.js')],
+  ['/xatolar', () => import('./pages/practice.js'), { auth: true, mode: 'mistakes' }],
+  ['/statistika', () => import('./pages/stats.js'), { auth: true }],
+  ['/sertifikat', () => import('./pages/certificate.js')],
+  ['/sertifikat/:code', () => import('./pages/certificate.js')],
   ['/test/:id', () => import('./pages/exam.js'), { auth: true }],
   ['/natija/:id', () => import('./pages/result.js'), { auth: true }],
   ['/reyting', () => import('./pages/leaderboard.js')],
@@ -44,6 +48,23 @@ function applyStatic() {
   document.getElementById('nav').setAttribute('aria-label', t('Asosiy menyu'));
 }
 
+// ---------- Tungi rejim ----------
+const theme = () => document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+function setTheme(v) {
+  document.documentElement.setAttribute('data-theme', v);
+  try { localStorage.setItem('theme', v); } catch { /* */ }
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', v === 'dark' ? '#0E1526' : '#163A7A');
+}
+const themeBtn = () => `<button class="btn btn-quiet btn-icon theme-btn" id="theme-btn" aria-label="${theme() === 'dark' ? t('Yorug\' rejim') : t('Tungi rejim')}" title="${theme() === 'dark' ? t('Yorug\' rejim') : t('Tungi rejim')}">${icon(theme() === 'dark' ? 'sun' : 'moon')}</button>`;
+
+// ---------- Ilovani o'rnatish (PWA) ----------
+let installEvent = null;
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvent = e; renderNav(); });
+window.addEventListener('appinstalled', () => { installEvent = null; toast(t("EduTest ilova sifatida o'rnatildi"), 'good'); renderNav(); });
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+}
+
 function langSwitcher() {
   const cur = LANGS.find((l) => l.code === getLang());
   return `<div class="dropdown lang">
@@ -69,18 +90,22 @@ function renderNav() {
   if (isStaff()) links.push(['/boshqaruv', t('Boshqaruv')]);
   const nav = document.getElementById('nav');
   nav.innerHTML = links.map(([h, label]) => `<a href="${h}" data-link ${here === h || (h !== '/' && here.startsWith(h + '/')) || (h === '/fanlar' && here.startsWith('/fan/')) ? 'aria-current="page"' : ''}>${label}</a>`).join('')
-    + (u ? '' : `<a href="/kirish" data-link class="mobile-only">${t('Kirish')}</a>`);
+    + (u ? '' : `<a href="/kirish" data-link class="mobile-only">${t('Kirish')}</a><a href="/royxat" data-link class="mobile-signup">${t("Ro'yxatdan o'tish")}</a>`)
+    + `<button class="theme-nav" id="theme-nav">${icon(theme() === 'dark' ? 'sun' : 'moon')} ${theme() === 'dark' ? t('Yorug\' rejim') : t('Tungi rejim')}</button>`;
   nav.classList.remove('open');
 
   const right = document.getElementById('nav-right');
-  right.innerHTML = langSwitcher() + (u
+  right.innerHTML = themeBtn() + langSwitcher() + (u
     ? `<div class="dropdown"><button class="user-chip" id="user-btn" aria-haspopup="true" aria-expanded="false">
-         <span class="avatar">${esc(initials(u.name))}</span><span class="nm">${esc(u.name.split(' ')[0])}</span></button>
+         ${avatar(u)}<span class="nm">${esc(u.name.split(' ')[0])}</span></button>
          <div class="dropdown-menu" id="user-menu" hidden>
            <div class="who"><b>${esc(u.name)}</b><div class="tiny muted">${esc(u.email)}</div><div class="tiny muted">${roleLabel[u.role]}${u.group ? `, ${esc(u.group)}` : ''}</div></div>
            <div class="sep"></div>
            <a href="/kabinet" data-link>${icon('chart')} ${t('Mening natijalarim')}</a>
+           <a href="/statistika" data-link>${icon('target')} ${t('Statistika')}</a>
+           <a href="/kabinet#sertifikatlar" data-link>${icon('award')} ${t('Sertifikatlarim')}</a>
            <a href="/profil" data-link>${icon('user')} ${t('Profil sozlamalari')}</a>
+           ${installEvent ? `<button id="install">${icon('phone')} ${t("Ilovani o'rnatish")}</button>` : ''}
            ${isStaff() ? `<a href="/boshqaruv" data-link>${icon('grid')} ${t('Boshqaruv paneli')}</a>` : ''}
            <div class="sep"></div>
            <button id="logout">${icon('logout')} ${t('Chiqish')}</button>
@@ -105,6 +130,16 @@ function renderNav() {
       toast(t("Til o'zgartirildi"), 'good');
     } else closeMenus();
   }));
+  const toggleTheme = () => { setTheme(theme() === 'dark' ? 'light' : 'dark'); renderNav(); };
+  right.querySelector('#theme-btn').addEventListener('click', toggleTheme);
+  nav.querySelector('#theme-nav').addEventListener('click', toggleTheme);
+  right.querySelector('#install')?.addEventListener('click', async () => {
+    closeMenus();
+    if (!installEvent) return;
+    installEvent.prompt();
+    await installEvent.userChoice.catch(() => {});
+    installEvent = null; renderNav();
+  });
   right.querySelector('#logout')?.addEventListener('click', async () => {
     await post('/api/auth/logout').catch(() => {});
     state.user = null;

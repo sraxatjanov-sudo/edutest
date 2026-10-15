@@ -55,6 +55,17 @@ const P = {
   key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M15 8l2 2"/>',
   home: '<path d="M3 11l9-7 9 7M5 9.5V20h14V9.5"/>',
   lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  award: '<circle cx="12" cy="9" r="6"/><path d="M8.5 13.8L7 22l5-3 5 3-1.5-8.2"/><path d="M9.8 9l1.6 1.6L14.5 7.5"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  moon: '<path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/>',
+  image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/>',
+  calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  phone: '<rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/>',
+  refresh: '<path d="M20 11a8 8 0 0 0-14.5-4.5L4 8M4 4v4h4M4 13a8 8 0 0 0 14.5 4.5L20 16M20 20v-4h-4"/>',
+  link: '<path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/>',
+  table: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16"/>',
+  cloud: '<path d="M7 18a5 5 0 0 1-.6-9.96A6 6 0 0 1 18 8.5a4.5 4.5 0 0 1-.5 9.5H7z"/>',
+  fire: '<path d="M12 22c4 0 7-2.8 7-6.8 0-3.6-2.4-5.6-4-8.2-.6 2-1.6 3-3 3.5.4-3-1-6.2-3.5-8.5C8.8 6 5 9 5 15.2 5 19.2 8 22 12 22z"/>',
 };
 
 export function icon(name, cls = '') {
@@ -81,6 +92,40 @@ export const fmtDate = (ms, withTime = true) => {
   return withTime ? `${base}${year}, ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` : base + year;
 };
 export const fmtNum = (n) => Number(n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
+// Profil rasmi yoki bosh harflar
+export const avatar = (u, cls = 'avatar') => (u && u.avatar
+  ? `<span class="${cls} has-img"><img src="/api/images/${esc(u.avatar)}" alt="" loading="lazy"></span>`
+  : `<span class="${cls}">${esc(initials(u?.name))}</span>`);
+// Savolga biriktirilgan rasm (sudrab olish va saqlash o'chirilgan)
+export const qimage = (key) => (key ? `<figure class="qimg"><img src="/api/images/${esc(key)}" alt="" draggable="false" loading="lazy"></figure>` : '');
+
+// Faylni brauzerning o'zida kichraytirib, data URL ga aylantirish (server va internet trafigi tejaladi)
+export function imageToDataUrl(file, { max = 1400, square = false, quality = 0.86 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (!file || !/^image\/(png|jpeg|webp|gif)$/.test(file.type)) return reject(new Error(t('Faqat PNG, JPEG, WebP yoki GIF rasm yuklash mumkin')));
+    if (file.size > 15e6) return reject(new Error(t('Rasm hajmi juda katta (1 MB gacha)')));
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let sw = img.naturalWidth, sh = img.naturalHeight, sx = 0, sy = 0;
+      if (square) { const side = Math.min(sw, sh); sx = (sw - side) / 2; sy = (sh - side) / 2; sw = sh = side; }
+      const k = Math.min(1, max / Math.max(sw, sh));
+      const c = document.createElement('canvas');
+      c.width = Math.round(sw * k); c.height = Math.round(sh * k);
+      const g = c.getContext('2d');
+      g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+      g.drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
+      // Chizmalar (PNG) aniq qolishi uchun PNG, fotosuratlar uchun JPEG — qaysi biri kichik bo'lsa
+      const png = file.type === 'image/png' ? c.toDataURL('image/png') : null;
+      const jpg = c.toDataURL('image/jpeg', quality);
+      resolve(png && png.length < jpg.length * 1.6 ? png : jpg);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error(t("Rasmni o'qib bo'lmadi"))); };
+    img.src = url;
+  });
+}
+
 export const initials = (name) => String(name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
 // Ko'rsatilgan paytda joriy tilga tarjima qilinadigan lug'atlar
 const lazy = (map) => new Proxy({}, { get: (_, k) => (k in map ? t(map[k]) : undefined) });
