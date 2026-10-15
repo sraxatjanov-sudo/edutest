@@ -1,0 +1,16 @@
+{
+  "name": "edutest",
+  "version": "2.0.0",
+  "description": "EduTest — fanlar bo'yicha onlayn test va imtihon platformasi (yakuniy loyiha)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --no-warnings server.js",
+    "dev": "node --no-warnings --watch server.js",
+    "seed": "node --no-warnings db/seed.js",
+    "reset": "node -e \"for (const f of ['edutest.db','edutest.db-wal','edutest.db-shm']) require('fs').rmSync(f,{force:true}); console.log('Baza o\\'chirildi. npm start bilan qayta yarating')\"",
+    "test": "node --no-warnings --test tests/*.test.js"
+  },
+  "engines": { "node": ">=22.5" },
+  "author": "Raxatjanov Shoxrux",
+  "license": "MIT"
+}

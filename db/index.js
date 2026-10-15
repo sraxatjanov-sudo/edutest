@@ -1,0 +1,111 @@
+// Ma'lumotlar bazasi ulanishi va sxemasi (Node.js ichidagi SQLite)
+const { DatabaseSync } = require('node:sqlite');
+const path = require('node:path');
+
+const file = process.env.DB_FILE || path.join(__dirname, '..', 'edutest.db');
+const db = new DatabaseSync(file);
+
+db.exec(`
+PRAGMA foreign_keys = ON;
+PRAGMA journal_mode = WAL;
+
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'student' CHECK (role IN ('student', 'teacher', 'admin')),
+  group_name TEXT,
+  is_blocked INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  last_login INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  token TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  expires_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS subjects (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  slug TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  description TEXT,
+  icon TEXT NOT NULL DEFAULT 'book',
+  color TEXT NOT NULL DEFAULT '#1F4FA3',
+  sort INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS questions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  subject_id INTEGER NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
+  text TEXT NOT NULL,
+  options TEXT NOT NULL,
+  correct INTEGER NOT NULL,
+  explanation TEXT,
+  difficulty INTEGER NOT NULL DEFAULT 2 CHECK (difficulty BETWEEN 1 AND 3),
+  archived INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_questions_subject ON questions(subject_id);
+
+CREATE TABLE IF NOT EXISTS tests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  subject_id INTEGER NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT,
+  question_count INTEGER NOT NULL DEFAULT 20,
+  time_limit INTEGER NOT NULL DEFAULT 20,
+  difficulty INTEGER NOT NULL DEFAULT 0,
+  max_attempts INTEGER NOT NULL DEFAULT 0,
+  max_violations INTEGER NOT NULL DEFAULT 3,
+  show_review INTEGER NOT NULL DEFAULT 1,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS attempts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  test_id INTEGER NOT NULL REFERENCES tests(id) ON DELETE CASCADE,
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'finished')),
+  started_at INTEGER NOT NULL,
+  deadline INTEGER NOT NULL,
+  finished_at INTEGER,
+  finish_reason TEXT,
+  score INTEGER,
+  total INTEGER NOT NULL,
+  percent INTEGER,
+  violations INTEGER NOT NULL DEFAULT 0,
+  ip TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_attempts_user ON attempts(user_id);
+CREATE INDEX IF NOT EXISTS idx_attempts_test ON attempts(test_id);
+
+CREATE TABLE IF NOT EXISTS attempt_items (
+  attempt_id INTEGER NOT NULL REFERENCES attempts(id) ON DELETE CASCADE,
+  position INTEGER NOT NULL,
+  question_id INTEGER NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+  option_order TEXT NOT NULL,
+  chosen INTEGER,
+  flagged INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (attempt_id, position)
+);
+
+CREATE TABLE IF NOT EXISTS violations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  attempt_id INTEGER NOT NULL REFERENCES attempts(id) ON DELETE CASCADE,
+  type TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_violations_attempt ON violations(attempt_id);
+`);
+
+// Tranzaksiya yordamchisi
+db.tx = (fn) => {
+  db.exec('BEGIN');
+  try { const r = fn(); db.exec('COMMIT'); return r; } catch (e) { db.exec('ROLLBACK'); throw e; }
+};
+
+module.exports = db;
