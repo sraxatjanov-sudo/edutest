@@ -195,7 +195,7 @@ export function pager(page, pages, total) {
 export function vbars(container, data, { label = (d) => d.label, value = (d) => d.value, unit = '' } = {}) {
   const W = 640, H = 200, pl = 28, pb = 26, pt = 10;
   const max = Math.max(1, ...data.map(value));
-  const step = niceStep(max);
+  const step = Math.max(1, niceStep(max)); // sanoqlar butun son
   const top = Math.ceil(max / step) * step;
   const bw = (W - pl) / data.length;
   const y = (v) => pt + (H - pt - pb) * (1 - v / top);

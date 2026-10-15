@@ -8,10 +8,12 @@ import { resultView, reviewList } from './result.js';
 
 const SECTIONS = [
   ['overview', "Umumiy ko'rinish", 'chart'],
+  ['tashriflar', 'Tashriflar', 'eye'],
   ['savollar', 'Savollar banki', 'layers'],
   ['testlar', 'Testlar', 'list'],
   ['guruhlar', 'Guruhlar', 'users'],
   ['natijalar', 'Natijalar', 'target'],
+  ['sertifikatlar', 'Sertifikatlar', 'award'],
   ['fanlar', 'Fanlar', 'book'],
   ['foydalanuvchilar', 'Foydalanuvchilar', 'user', 'admin'],
 ];
@@ -32,11 +34,11 @@ export default async function admin(main, { section = 'overview', id }, ctx) {
 
   main.innerHTML = `<div class="admin">
     <aside class="side"><h4>${t('Boshqaruv')}</h4><nav aria-label="${t("Boshqaruv bo'limlari")}">
-      ${allowed.map(([k, label, ic]) => `<a href="/boshqaruv${k === 'overview' ? '' : '/' + k}" data-link ${k === section ? 'aria-current="page"' : ''}>${icon(ic)} ${t(label)}</a>`).join('')}
+      ${allowed.map(([k, label, ic]) => `<a href="/panel${k === 'overview' ? '' : '/' + k}" data-link ${k === section ? 'aria-current="page"' : ''}>${icon(ic)} ${t(label)}</a>`).join('')}
     </nav></aside>
     <div class="admin-main" id="am">${skeleton(8)}</div></div>`;
   const root = main.querySelector('#am');
-  const views = { overview, savollar: questions, testlar: tests, guruhlar: id ? groupDetail : groupsView, natijalar: id ? attemptDetail : attempts, fanlar: subjectsView, foydalanuvchilar: users };
+  const views = { overview, savollar: questions, testlar: tests, guruhlar: id ? groupDetail : groupsView, tashriflar: visitsView, sertifikatlar: certsView, natijalar: id ? attemptDetail : attempts, fanlar: subjectsView, foydalanuvchilar: users };
   await views[section](root, { id, ...ctx });
 }
 
@@ -68,11 +70,11 @@ async function overview(root, { state }) {
         ${hbars(d.bySubject.filter((x) => x.attempts).map((x) => ({ name: x.name, color: x.color, value: x.avg })))}</div></section>
     </div>
     <div class="grid-2">
-      <section class="panel"><div class="panel-head"><h2>${t("So'nggi qoidabuzarliklar")}</h2><a class="btn btn-ghost btn-sm" href="/boshqaruv/natijalar?flagged=1" data-link>${t('Shubhali natijalar ({n})', { n: c.flagged })}</a></div>
+      <section class="panel"><div class="panel-head"><h2>${t("So'nggi qoidabuzarliklar")}</h2><a class="btn btn-ghost btn-sm" href="/panel/natijalar?flagged=1" data-link>${t('Shubhali natijalar ({n})', { n: c.flagged })}</a></div>
         <div class="panel-body">${d.recentViolations.length ? `<div class="list">${d.recentViolations.map((v) => `
           <div class="list-item"><span class="tag tag-bad">${icon('alert')}</span><div class="grow"><b>${esc(v.name)}</b>, ${esc(v.label.toLowerCase())}
             <div class="tiny muted">${esc(v.title)}, ${fmtDate(v.created_at)}</div></div>
-            <a class="btn btn-quiet btn-sm" href="/boshqaruv/natijalar/${v.attempt_id}" data-link>${t("Ko'rish")}</a></div>`).join('')}</div>`
+            <a class="btn btn-quiet btn-sm" href="/panel/natijalar/${v.attempt_id}" data-link>${t("Ko'rish")}</a></div>`).join('')}</div>`
           : `<p class="muted">${t('Qoidabuzarliklar qayd etilmagan.')}</p>`}</div></section>
       <section class="panel"><div class="panel-head"><h2>${t('Eng qiyin savollar')}</h2></div>
         <div class="panel-body">${d.hardest.length ? `<div class="list">${d.hardest.map((q) => `
@@ -127,7 +129,7 @@ async function questions(root) {
   let data = null;
   async function load() {
     const p = new URLSearchParams(Object.entries(f).filter(([, v]) => v !== '' && v !== '0' && v !== 1));
-    history.replaceState({}, '', `/boshqaruv/savollar${p.toString() ? '?' + p : ''}`);
+    history.replaceState({}, '', `/panel/savollar${p.toString() ? '?' + p : ''}`);
     data = await get(`/api/admin/questions?${new URLSearchParams(f)}`);
     tbl.innerHTML = data.questions.length ? `<div class="table-wrap"><table class="table">
       <thead><tr><th>${t('Savol')}</th><th>${t('Fan')}</th><th>${t('Qiyinlik')}</th><th>${t("To'g'ri javob")}</th><th>${t('Tarjima')}</th><th>${t('Ishlatilgan')}</th><th></th></tr></thead>
@@ -468,7 +470,7 @@ async function attempts(root) {
   async function load() {
     const params = new URLSearchParams(Object.entries(f).filter(([, v]) => v));
     root.querySelector('#csv').href = `/api/admin/attempts.csv?${params}`;
-    history.replaceState({}, '', `/boshqaruv/natijalar${params.toString() ? '?' + params : ''}`);
+    history.replaceState({}, '', `/panel/natijalar${params.toString() ? '?' + params : ''}`);
     const d = await get(`/api/admin/attempts?${params}`);
     tbl.innerHTML = d.attempts.length ? `<div class="table-wrap"><table class="table">
       <thead><tr><th>${t('Talaba')}</th><th>${t('Test')}</th><th>${t('Natija')}</th><th>${t('Baho')}</th><th>${t('Qoidabuzarlik')}</th><th>${t('Sana')}</th><th></th></tr></thead>
@@ -479,7 +481,7 @@ async function attempts(root) {
         <td><b>${markOf(a.percent)}</b></td>
         <td>${a.violations ? `<span class="tag tag-bad">${a.violations}${a.finish_reason === 'violations' ? t(', yakunlangan') : ''}</span>` : '<span class="muted">—</span>'}</td>
         <td>${fmtDate(a.finished_at)}</td>
-        <td class="actions"><a class="btn btn-ghost btn-sm" href="/boshqaruv/natijalar/${a.id}" data-link>${t('Batafsil')}</a></td></tr>`).join('')}</tbody></table></div>${pager(d.page, d.pages, d.total)}`
+        <td class="actions"><a class="btn btn-ghost btn-sm" href="/panel/natijalar/${a.id}" data-link>${t('Batafsil')}</a></td></tr>`).join('')}</tbody></table></div>${pager(d.page, d.pages, d.total)}`
       : emptyState(t('Natija topilmadi'), t("Filtrlarni o'zgartirib ko'ring."));
   }
   let timer;
@@ -495,7 +497,7 @@ async function attempts(root) {
 async function attemptDetail(root, { id, navigate }) {
   const { result: r } = await get(`/api/admin/attempts/${Number(id)}`);
   const st = r.student;
-  root.innerHTML = `<nav class="crumbs"><a href="/boshqaruv/natijalar" data-link>${t('Natijalar')}</a><span>/</span><span>${esc(st.name)}</span></nav>
+  root.innerHTML = `<nav class="crumbs"><a href="/panel/natijalar" data-link>${t('Natijalar')}</a><span>/</span><span>${esc(st.name)}</span></nav>
     ${head(st.name, `${esc(st.email)}${st.group ? `, ${esc(st.group)}` : ''}${r.ip ? `, IP ${esc(r.ip)}` : ''}`, `<button class="btn btn-danger" id="annul">${icon('trash')} ${t('Natijani bekor qilish')}</button>`)}
     <div class="stack" style="--gap:20px">
       ${resultView(r, { staffView: true })}
@@ -506,7 +508,7 @@ async function attemptDetail(root, { id, navigate }) {
     </div>`;
   root.querySelector('#annul').addEventListener('click', async () => {
     if (await confirmDialog({ title: t('Natijani bekor qilasizmi?'), text: t("Bu urinish butunlay o'chiriladi va reytingdan chiqariladi. Talaba testni qayta topshirishi mumkin bo'ladi."), ok: t('Natijani bekor qilish'), danger: true })) {
-      await del(`/api/admin/attempts/${r.id}`); toast(t('Natija bekor qilindi'), 'good'); navigate('/boshqaruv/natijalar');
+      await del(`/api/admin/attempts/${r.id}`); toast(t('Natija bekor qilindi'), 'good'); navigate('/panel/natijalar');
     }
   });
 }
@@ -519,7 +521,7 @@ async function subjectsView(root, { state }) {
       <span class="subject-icon">${icon(s.icon)}</span><h3>${esc(s.label)}</h3><p>${esc(s.label_description || '')}</p>
       <span class="subject-meta"><span>${t('{n} savol', { n: s.question_count })}</span><span>${t('{n} test', { n: s.test_count })}</span></span>
       <div class="row"><button class="btn btn-ghost btn-sm" data-edit="${s.id}">${icon('edit')} ${t('Tahrirlash')}</button>
-        <a class="btn btn-quiet btn-sm" href="/boshqaruv/savollar?subject=${s.id}" data-link>${t('Savollar')}</a>
+        <a class="btn btn-quiet btn-sm" href="/panel/savollar?subject=${s.id}" data-link>${t('Savollar')}</a>
         ${state.user.role === 'admin' ? `<button class="btn btn-quiet btn-sm" data-del="${s.id}" aria-label="${t("O'chirish")}">${icon('trash')}</button>` : ''}</div></div>`).join('')}</div>`;
   const reload = () => subjectsView(root, { state });
   root.querySelector('#add').addEventListener('click', () => subjectEditor(null, reload));
@@ -623,7 +625,7 @@ async function resetPassword(id, name) {
 async function groupsView(root, { state, navigate }) {
   const list = await groupsList();
   root.innerHTML = `${head(t('Guruhlar'), t("Guruh yarating va kodini talabalarga bering. Ular kabinetda kodni kiritib qo'shiladi."), `<button class="btn" id="add">${icon('plus')} ${t('Yangi guruh')}</button>`)}
-    ${list.length ? `<div class="groups">${list.map((g) => `<a class="group-card" href="/boshqaruv/guruhlar/${g.id}" data-link>
+    ${list.length ? `<div class="groups">${list.map((g) => `<a class="group-card" href="/panel/guruhlar/${g.id}" data-link>
         <div class="spread"><h3>${esc(g.name)}</h3><span class="code-chip num">${esc(g.code)}</span></div>
         <div class="facts"><span>${icon('users')} ${t("{n} a'zo", { n: g.members })}</span><span>${icon('list')} ${t('{n} test', { n: g.tests })}</span>
           ${g.avg != null ? `<span>${icon('target')} ${t("o'rtacha {p}%", { p: g.avg })}</span>` : ''}</div>
@@ -638,7 +640,7 @@ async function groupsView(root, { state, navigate }) {
     });
     const save = async (e) => {
       e?.preventDefault();
-      try { const r = await post('/api/admin/groups', { name: m.el.querySelector('#gn').value }); m.close(); toast(t('Guruh yaratildi'), 'good'); navigate(`/boshqaruv/guruhlar/${r.id}`); }
+      try { const r = await post('/api/admin/groups', { name: m.el.querySelector('#gn').value }); m.close(); toast(t('Guruh yaratildi'), 'good'); navigate(`/panel/guruhlar/${r.id}`); }
       catch (err) { m.el.querySelector('#gerr').textContent = err.message; }
     };
     m.el.querySelector('#gsave').addEventListener('click', save);
@@ -650,9 +652,9 @@ async function groupDetail(root, { id, state, navigate }) {
   const d = await get(`/api/admin/groups/${Number(id)}`);
   const g = d.group;
   const joinUrl = `${location.origin}/kabinet`;
-  root.innerHTML = `<nav class="crumbs"><a href="/boshqaruv/guruhlar" data-link>${t('Guruhlar')}</a><span>/</span><span>${esc(g.name)}</span></nav>
+  root.innerHTML = `<nav class="crumbs"><a href="/panel/guruhlar" data-link>${t('Guruhlar')}</a><span>/</span><span>${esc(g.name)}</span></nav>
     ${head(g.name, t('{n} a\'zo, {date} da yaratilgan', { n: d.members.length, date: fmtDate(g.created_at, false) }),
-      `<a class="btn btn-ghost" href="/boshqaruv/natijalar?group=${g.id}" data-link>${icon('target')} ${t('Natijalar')}</a>
+      `<a class="btn btn-ghost" href="/panel/natijalar?group=${g.id}" data-link>${icon('target')} ${t('Natijalar')}</a>
        <button class="btn btn-ghost" id="ren">${icon('edit')} ${t('Nomini o\'zgartirish')}</button>
        <button class="btn btn-quiet" id="gdel" aria-label="${t("O'chirish")}">${icon('trash')}</button>`)}
     <div class="grid-2" style="margin-bottom:20px">
@@ -683,7 +685,7 @@ async function groupDetail(root, { id, state, navigate }) {
             <button class="btn btn-quiet btn-sm" data-rm="${u.id}" data-name="${esc(u.name)}" title="${t('Guruhdan chiqarish')}" aria-label="${t('Guruhdan chiqarish')}">${icon('x')}</button></td></tr>`).join('')}</tbody></table></div>`
         : emptyState(t("Hali a'zolar yo'q"), t('Kodni talabalarga yuboring.'))}
     </section>
-    <section class="panel"><div class="panel-head"><h2>${t('Guruh testlari')}</h2><a class="btn btn-ghost btn-sm" href="/boshqaruv/testlar" data-link>${icon('plus')} ${t('Test biriktirish')}</a></div>
+    <section class="panel"><div class="panel-head"><h2>${t('Guruh testlari')}</h2><a class="btn btn-ghost btn-sm" href="/panel/testlar" data-link>${icon('plus')} ${t('Test biriktirish')}</a></div>
       ${d.tests.length ? `<div class="table-wrap"><table class="table"><thead><tr><th>${t('Test')}</th><th>${t('Jadval')}</th><th>${t('Topshirgan')}</th><th>${t("O'rtacha")}</th></tr></thead>
         <tbody>${d.tests.map((x) => `<tr><td><b>${esc(x.title)}</b>${x.is_active ? '' : ` <span class="tag">${t('Yopiq')}</span>`}</td>
           <td class="small">${x.opens_at || x.closes_at ? `${x.opens_at ? fmtDate(x.opens_at) : '…'} — ${x.closes_at ? fmtDate(x.closes_at) : '…'}` : t('Cheklovsiz')}</td>
@@ -713,7 +715,7 @@ async function groupDetail(root, { id, state, navigate }) {
   });
   root.querySelector('#gdel').addEventListener('click', async () => {
     if (!await confirmDialog({ title: t("«{name}» guruhini o'chirasizmi?", { name: g.name }), text: t("Talabalar hisoblari va natijalari saqlanadi. Guruhga biriktirilgan testlar barcha talabalarga ochiq bo'lib qoladi."), ok: t("O'chirish"), danger: true })) return;
-    await del(`/api/admin/groups/${g.id}`); toast(t("Guruh o'chirildi"), 'good'); navigate('/boshqaruv/guruhlar');
+    await del(`/api/admin/groups/${g.id}`); toast(t("Guruh o'chirildi"), 'good'); navigate('/panel/guruhlar');
   });
   root.querySelector('#addm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -727,4 +729,104 @@ async function groupDetail(root, { id, state, navigate }) {
       await del(`/api/admin/groups/${g.id}/members/${b.dataset.rm}`); toast(t('Guruhdan chiqarildi'), 'good'); reload();
     }
   };
+}
+
+// ---------- Tashriflar ----------
+async function visitsView(root) {
+  const d = await get('/api/admin/visits?days=30');
+  const pageName = (p) => {
+    const map = { '/': t('Bosh sahifa'), '/fanlar': t('Fanlar'), '/reyting': t('Reyting'), '/kabinet': t('Kabinet'), '/kirish': t('Kirish'),
+      '/royxat': t("Ro'yxatdan o'tish"), '/test': t('Imtihon'), '/natija': t('Natija'), '/sertifikat': t('Sertifikat'), '/statistika': t('Statistika'),
+      '/profil': t('Profil'), '/xatolar': t('Xatolar ustida ishlash') };
+    if (map[p.path]) return map[p.path];
+    if (p.path.startsWith('/fan/')) return t('Fan: {name}', { name: p.subject || p.path.slice(5) });
+    if (p.path.startsWith('/mashq/')) return t('Mashq: {name}', { name: p.subject || p.path.slice(7) });
+    return p.path;
+  };
+  const card = (label, x) => `<div class="kpi"><div class="v">${fmtNum(x.visitors)}</div><div class="l">${label}</div>
+    <div class="tiny muted" style="margin-top:6px">${t("{v} sahifa ko'rish, {u} foydalanuvchi", { v: fmtNum(x.views), u: fmtNum(x.users) })}</div></div>`;
+  const sp = d.split;
+  root.innerHTML = `${head(t('Tashriflar'), t("Saytga necha kishi kirgani. Har bir brauzer bir marta sanaladi, IP manzillar saqlanmaydi."))}
+    <div class="kpis" style="margin-bottom:20px">
+      ${card(t('bugun kirganlar'), d.today)}${card(t('so\'nggi 7 kunda'), d.week)}${card(t('so\'nggi 30 kunda'), d.month)}
+      <div class="kpi"><div class="v">${fmtNum(d.accounts.loginsToday)}</div><div class="l">${t('bugun tizimga kirgan')}</div>
+        <div class="tiny muted" style="margin-top:6px">${t("jami {n} talaba, hafta davomida +{w}", { n: fmtNum(d.accounts.total), w: d.accounts.newWeek })}</div></div>
+    </div>
+    <section class="panel" style="margin-bottom:20px"><div class="panel-head"><h2>${t("Kunlik tashrifchilar (30 kun)")}</h2></div>
+      <div class="panel-body"><div id="vchart"></div></div></section>
+    <div class="grid-2" style="margin-bottom:20px">
+      <section class="panel"><div class="panel-head"><h2>${t("Ko'p ochilgan sahifalar")}</h2></div>
+        <div class="panel-body">${d.pages.length ? hbars(d.pages.map((p) => ({ name: pageName(p), value: p.views, color: 'var(--lapis)' })), { max: Math.max(...d.pages.map((p) => p.views)), unit: '' }) : `<p class="muted">${t("Hali ma'lumot yo'q")}</p>`}</div></section>
+      <section class="panel"><div class="panel-head"><h2>${t('Kimlar kiryapti (30 kun)')}</h2></div>
+        <div class="panel-body">${hbars([
+          { name: t('Mehmonlar (ro\'yxatdan o\'tmagan)'), value: sp.guests, color: 'var(--saffron)' },
+          { name: t("Ro'yxatdan o'tganlar"), value: sp.members, color: 'var(--lapis)' },
+          { name: t('Telefondan'), value: sp.mobile, color: 'var(--turq)' },
+          { name: t('Kompyuterdan'), value: sp.desktop, color: 'var(--ink-2)' },
+        ], { max: Math.max(1, sp.guests + sp.members, sp.mobile + sp.desktop), unit: '' })}</div></section>
+    </div>
+    <section class="panel"><div class="panel-head"><h2>${t("So'nggi 7 kunda kirgan foydalanuvchilar")}</h2></div>
+      ${d.recent.length ? `<div class="table-wrap"><table class="table"><thead><tr><th>${t('Foydalanuvchi')}</th><th>${t('Rol')}</th><th>${t('Guruh')}</th><th>${t("Sahifa ko'rish")}</th><th>${t('Oxirgi marta')}</th></tr></thead>
+        <tbody>${d.recent.map((u) => `<tr><td><div class="row" style="gap:10px;flex-wrap:nowrap">${avatar(u)}<div><b>${esc(u.name)}</b><div class="tiny muted">${esc(u.email)}</div></div></div></td>
+          <td>${roleLabel[u.role]}</td><td>${esc(u.group || '—')}</td><td class="num">${u.views}</td><td>${fmtDate(u.last)}</td></tr>`).join('')}</tbody></table></div>`
+        : `<div class="panel-body"><p class="muted">${t("Hali ma'lumot yo'q")}</p></div>`}</section>`;
+  vbars(root.querySelector('#vchart'), d.series.map((x) => ({ label: fmtDate(new Date(`${x.day}T12:00:00`).getTime(), false), value: x.visitors })), { unit: t('kishi') });
+}
+
+// ---------- Sertifikatlar: kim oldi, kim ololmadi ----------
+async function certsView(root) {
+  const groups = await groupsList();
+  const qs = new URLSearchParams(location.search);
+  const f = { q: qs.get('q') || '', test: qs.get('test') || '', group: qs.get('group') || '', status: qs.get('status') || '', page: 1 };
+  root.innerHTML = `${head(t('Sertifikatlar'), t("Sertifikatli testlarni topshirgan har bir talabaning eng yaxshi natijasi"), `<a class="btn btn-ghost" id="csv" href="#" download>${icon('download')} ${t('Excel (CSV) yuklab olish')}</a>`)}
+    <div class="kpis" id="sum" style="margin-bottom:20px">${skeleton(1)}</div>
+    <section class="panel">
+      <div class="toolbar">
+        <div class="input-icon">${icon('search')}<input class="input" id="fq" placeholder="${t('Talaba ismi, email yoki guruh')}" value="${esc(f.q)}"></div>
+        <select class="select" id="ft"><option value="">${t('Barcha testlar')}</option></select>
+        ${groups.length ? `<select class="select" id="fg"><option value="">${t('Barcha guruhlar')}</option>${groups.map((g) => `<option value="${g.id}" ${String(g.id) === f.group ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select>` : ''}
+        <div class="seg" id="fs"><button data-s="" aria-pressed="${!f.status}">${t('Barchasi')}</button><button data-s="got" aria-pressed="${f.status === 'got'}">${t('Oldi')}</button><button data-s="missed" aria-pressed="${f.status === 'missed'}">${t('Ololmadi')}</button></div>
+      </div>
+      <div id="tbl">${skeleton(8)}</div></section>`;
+  const tbl = root.querySelector('#tbl');
+  let testsLoaded = false;
+  async function load() {
+    const params = new URLSearchParams(Object.entries(f).filter(([k, v]) => v && !(k === 'page' && v === 1)));
+    root.querySelector('#csv').href = `/api/admin/certificates.csv?${params}`;
+    history.replaceState({}, '', `/panel/sertifikatlar${params.toString() ? '?' + params : ''}`);
+    const d = await get(`/api/admin/certificates?${params}`);
+    if (!testsLoaded) {
+      root.querySelector('#ft').innerHTML = `<option value="">${t('Barcha testlar')}</option>${d.tests.map((x) => `<option value="${x.id}" ${String(x.id) === f.test ? 'selected' : ''}>${esc(x.title)} (${x.cert_percent}%)</option>`).join('')}`;
+      testsLoaded = true;
+    }
+    const s = d.summary;
+    root.querySelector('#sum').innerHTML = `
+      <div class="kpi"><div class="v" style="color:var(--good)">${fmtNum(s.got)}</div><div class="l">${t('sertifikat oldi')}</div></div>
+      <div class="kpi"><div class="v" style="color:var(--bad)">${fmtNum(s.missed)}</div><div class="l">${t('ololmadi')}</div></div>
+      <div class="kpi"><div class="v">${s.rate != null ? s.rate + '%' : '—'}</div><div class="l">${t('muvaffaqiyat darajasi')}</div></div>
+      <div class="kpi"><div class="v">${fmtNum(s.issued)}</div><div class="l">${t('jami berilgan sertifikat')}</div></div>`;
+    tbl.innerHTML = d.rows.length ? `<div class="table-wrap"><table class="table">
+      <thead><tr><th>${t('Talaba')}</th><th>${t('Test')}</th><th>${t('Eng yaxshi natija')}</th><th>${t('Kerak edi')}</th><th>${t('Holat')}</th><th>${t('Urinish')}</th><th>${t('Sana')}</th></tr></thead>
+      <tbody>${d.rows.map((x) => `<tr>
+        <td><div class="row" style="gap:10px;flex-wrap:nowrap">${avatar(x)}<div><b>${esc(x.name)}</b><div class="tiny muted">${esc(x.group || x.email)}</div></div></div></td>
+        <td><b>${esc(x.title)}</b><div class="tiny muted"><i class="dot" style="--c:${esc(x.color)};display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--c);margin-right:6px"></i>${esc(x.subject)}</div></td>
+        <td><span class="pct ${pctClass(x.best)}">${x.best}%</span> <span class="tiny muted">${t('baho {m}', { m: markOf(x.best) })}</span></td>
+        <td class="num">${x.cert_percent}%</td>
+        <td>${x.code ? `<a class="tag tag-good" href="/sertifikat/${esc(x.code)}" target="_blank" rel="noopener" title="${t('Sertifikatni ochish')}">${icon('award')} ${esc(x.code)}</a>`
+          : `<span class="tag tag-bad">${icon('x')} ${x.best >= x.cert_percent && x.violated != null ? t('Qoidabuzarlik') : t('yana {p}% kerak edi', { p: Math.max(1, x.cert_percent - x.best) })}</span>`}</td>
+        <td class="num">${x.attempts}</td>
+        <td>${fmtDate(x.last)}</td></tr>`).join('')}</tbody></table></div>${pager(d.page, d.pages, d.total)}`
+      : emptyState(t('Natija topilmadi'), t("Sertifikatli testni hali hech kim topshirmagan yoki filtrlarga mos natija yo'q."));
+  }
+  let timer;
+  root.querySelector('#fq').addEventListener('input', (e) => { clearTimeout(timer); timer = setTimeout(() => { f.q = e.target.value.trim(); f.page = 1; load(); }, 250); });
+  root.querySelector('#ft').addEventListener('change', (e) => { f.test = e.target.value; f.page = 1; load(); });
+  root.querySelector('#fg')?.addEventListener('change', (e) => { f.group = e.target.value; f.page = 1; load(); });
+  root.querySelector('#fs').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    f.status = b.dataset.s; f.page = 1;
+    root.querySelectorAll('#fs button').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); load();
+  });
+  tbl.addEventListener('click', (e) => { const b = e.target.closest('[data-page]'); if (b) { f.page = Number(b.dataset.page); load(); } });
+  load();
 }

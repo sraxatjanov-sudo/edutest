@@ -136,6 +136,18 @@ CREATE TABLE IF NOT EXISTS certificates (
   issued_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_cert_user ON certificates(user_id);
+
+-- Tashriflar: sahifa ko'rishlari (shaxsiy ma'lumotsiz: tasodifiy brauzer belgisi, IP saqlanmaydi)
+CREATE TABLE IF NOT EXISTS visits (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  day TEXT NOT NULL,
+  vid TEXT NOT NULL,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  path TEXT NOT NULL,
+  mobile INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_visits_day ON visits(day);
 `);
 
 // Migratsiya: eski bazalarga yangi ustunlarni qo'shish

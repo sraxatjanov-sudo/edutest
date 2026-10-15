@@ -259,3 +259,47 @@ test('eski (v2) bazadan yangilanish: ustunlar, sertifikatlar va namunaviy guruh 
   db.close();
   for (const s of ['', '-wal', '-shm']) fs.rmSync(old + s, { force: true });
 });
+
+test('alohida panel: /panel sahifasi, tashriflar va sertifikatlar ro\'yxati', async () => {
+  const anon = client();
+  const page = await anon('GET', '/panel/sertifikatlar');
+  assert.equal(page.status, 200);
+  assert.match(page.data.toString(), /js\/panel\.js/);
+  assert.equal(page.headers.get('x-robots-tag'), 'noindex, nofollow');
+  assert.doesNotMatch((await anon('GET', '/')).data.toString(), /panel\.js/, 'asosiy sayt paneldan alohida');
+
+  // Tashriflar: noto'g'ri belgi e'tiborsiz qoldiriladi, to'g'risi sanaladi
+  await anon('POST', '/api/visit', { vid: 'bad id!', path: '/' });
+  await anon('POST', '/api/visit', { vid: 'abcdefghijkl1234', path: '/fan/fizika?x=1' });
+  await anon('POST', '/api/visit', { vid: 'abcdefghijkl1234', path: '/test/55' });
+  await anon('POST', '/api/visit', { vid: 'zyxwvutsrq987654', path: '/' });
+  assert.equal((await anon('GET', '/api/admin/visits')).status, 401);
+  const st = await register('Panel Talaba', 'panelst@test.uz');
+  assert.equal((await st('GET', '/api/admin/visits')).status, 403);
+  const admin = await login('admin@edutest.uz', 'admin123');
+  await admin('POST', '/api/visit', { vid: 'adminbrowser0001', path: '/kabinet' });
+  const v = await admin('GET', '/api/admin/visits');
+  assert.equal(v.status, 200);
+  assert.ok(v.data.today.visitors >= 3);
+  assert.ok(v.data.today.users >= 1);
+  assert.equal(v.data.series.length, 30);
+  assert.ok(v.data.pages.some((p) => p.path === '/fan/fizika' && p.subject === 'Fizika'));
+  assert.ok(v.data.pages.some((p) => p.path === '/test'));
+  assert.ok(v.data.recent.some((u) => u.email === 'admin@edutest.uz'));
+
+  // Sertifikatlar: oldi / ololmadi
+  const { data: subj } = await st('GET', '/api/subjects/fizika');
+  const general = subj.tests.find((x) => x.cert_percent > 0);
+  await solve(st, general.id, 15);
+  const c = await admin('GET', '/api/admin/certificates?q=panelst');
+  assert.equal(c.status, 200);
+  assert.equal(c.data.rows.length, 1);
+  assert.equal(c.data.rows[0].code, null);
+  assert.ok(c.data.rows[0].best < c.data.rows[0].cert_percent);
+  const got = await admin('GET', '/api/admin/certificates?status=got');
+  assert.ok(got.data.rows.every((x) => x.code));
+  assert.ok(got.data.summary.got >= 1);
+  const csv = await admin('GET', '/api/admin/certificates.csv?status=missed');
+  assert.match(csv.headers.get('content-type'), /text\/csv/);
+  assert.match(csv.data.toString(), /Panel Talaba/);
+});

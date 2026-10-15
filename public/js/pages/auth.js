@@ -25,9 +25,7 @@ export default async function auth(main, { mode }, { state, setTitle, navigate }
         <p class="form-error" id="err" role="alert"></p>
         <button class="btn btn-lg btn-block" id="submit">${reg ? t("Ro'yxatdan o'tish") : t('Kirish')}</button>
         <p class="small muted">${reg ? `${t('Hisobingiz bormi?')} <a href="/kirish" data-link>${t('Kirish')}</a>` : `${t("Hisobingiz yo'qmi?")} <a href="/royxat" data-link>${t("Ro'yxatdan o'ting")}</a>`}</p>
-        ${reg ? '' : `<div class="demo-accounts"><b>${t('Sinov hisoblari')}</b> ${t("(bosing, maydonlar to'ladi):")}<br>
-          <button type="button" data-e="admin@edutest.uz" data-p="admin123">${t('Administrator')}</button>,
-          <button type="button" data-e="teacher@edutest.uz" data-p="teacher123">${t("O'qituvchi")}</button>,
+        ${reg ? '' : `<div class="demo-accounts"><b>${t('Sinov hisobi')}</b> ${t("(bosing, maydonlar to'ladi):")}
           <button type="button" data-e="talaba@edutest.uz" data-p="talaba123">${t('Talaba')}</button></div>`}
       </form>
     </div></div>`;
@@ -48,7 +46,7 @@ export default async function auth(main, { mode }, { state, setTitle, navigate }
       setUser(user);
       const after = sessionStorage.getItem('after-login');
       sessionStorage.removeItem('after-login');
-      navigate(after || (user.role === 'student' ? '/kabinet' : '/boshqaruv'), { replace: true });
+      navigate(after || '/kabinet', { replace: true });
     } catch (err) {
       f.querySelector('#err').textContent = err.message;
       btn.disabled = false;

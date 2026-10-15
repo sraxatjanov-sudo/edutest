@@ -9,7 +9,7 @@ const dictSrc = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'i18n
 const DICT = new Function(dictSrc)();
 // Kodda bevosita emas, lug'at obyektlari orqali chaqiriladigan kalitlar (ui.js dagi lazy)
 const INDIRECT = ['Aralash', 'Oson', "O'rta", 'Qiyin', 'Talaba', "O'qituvchi", 'Administrator', 'Topshirildi', 'Vaqt tugadi',
-  'Qoidabuzarlik sababli yakunlandi', "Umumiy ko'rinish", 'Savollar banki', 'Testlar', 'Natijalar', 'Fanlar', 'Foydalanuvchilar', 'Guruhlar',
+  'Qoidabuzarlik sababli yakunlandi', "Umumiy ko'rinish", 'Savollar banki', 'Testlar', 'Natijalar', 'Fanlar', 'Foydalanuvchilar', 'Guruhlar', 'Tashriflar', 'Sertifikatlar',
   "A'lo", 'Yaxshi', 'Qoniqarli', 'Qoniqarsiz'];
 const placeholders = (s) => [...String(s).matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(',');
 

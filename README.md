@@ -16,7 +16,7 @@ EduTest — talabalar 11 ta fan bo'yicha onlayn imtihon topshiradigan va mashq q
 | Tayyor testlar | 22 ta (har fanda "umumiy test" va "tezkor sinov") |
 | Rollar | Talaba, O'qituvchi, Administrator |
 | Tashqi paketlar | **0 ta**: faqat Node.js'ning o'zi |
-| Avtomatik testlar | 33 ta (`npm test`) |
+| Avtomatik testlar | 34 ta (`npm test`) |
 | v3 yangiliklari | Sertifikat (QR-kod bilan), guruhlar, rasmli savollar, tungi rejim, statistika, Excel'dan import, imtihon jadvali, telefonga o'rnatish, ma'lumotlarni saqlash |
 
 ## Internetga joylash (bir tugma bilan)
@@ -70,6 +70,14 @@ Kirish sahifasida bu hisoblarni bir bosishda to'ldirish mumkin.
 | `npm run reset` | Bazani o'chirish (keyingi `npm start` qaytadan yaratadi) |
 
 > Shriftlar (Unbounded, Manrope) Google Fonts'dan yuklanadi. Internet bo'lmasa sayt tizim shriftlari bilan ishlayveradi.
+
+## Boshqaruv paneli (alohida)
+
+O'qituvchi va administrator paneli asosiy saytdan ajratilgan: **`/panel`** manzilida ochiladi (masalan `https://edutest-7fah.onrender.com/panel`). Saytda unga hech qanday tugma yoki havola yo'q, qidiruv tizimlari uni indekslamaydi, o'z kirish oynasi bor va talaba hisobi bilan kirib bo'lmaydi.
+
+Panel bo'limlari: umumiy ko'rinish, **tashriflar** (bugun / 7 kun / 30 kun ichida saytga kirganlar, kunlik grafik, ko'p ochilgan sahifalar, mehmon va ro'yxatdan o'tganlar, telefon va kompyuter), savollar banki, testlar, guruhlar, natijalar, **sertifikatlar** (kim oldi, kim ololmadi va yana necha foiz kerak edi, Excel'ga yuklab olish), fanlar, foydalanuvchilar.
+
+> Tashriflar hisobida IP manzil saqlanmaydi: har bir brauzerga tasodifiy belgi beriladi.
 
 ## Imkoniyatlar
 

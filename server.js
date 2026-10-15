@@ -30,6 +30,7 @@ function boot() {
   require('./routes/student')(router);
   require('./routes/admin')(router);
   require('./routes/extra')(router);
+  require('./routes/panel')(router);
 }
 
 function serveStatic(req, res, pathname) {
@@ -42,7 +43,10 @@ function serveStatic(req, res, pathname) {
   // Kengaytmasiz yo'llar — SPA sahifalari, index.html qaytariladi
   if (!isFile) {
     if (path.extname(rel)) { res.writeHead(404, { ...SECURITY_HEADERS, 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Topilmadi'); }
-    file = path.join(PUBLIC, 'index.html');
+    // Boshqaruv paneli — alohida ilova (/panel), asosiy sayt — index.html
+    const isPanel = rel === '/panel' || rel.startsWith('/panel/');
+    file = path.join(PUBLIC, isPanel ? 'panel.html' : 'index.html');
+    if (isPanel) res.setHeader('X-Robots-Tag', 'noindex, nofollow');
   }
   const ext = path.extname(file);
   res.writeHead(200, {

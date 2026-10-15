@@ -469,7 +469,8 @@ body.exam-mode .topbar, body.exam-mode .footer { display: none; }
   .layout-2, .exam-body .wrap, .grid-2 { grid-template-columns: 1fr; }
   .palette-card { position: static; }
   .palette { grid-template-columns: repeat(10, 1fr); }
-  .admin { grid-template-columns: 1fr; }
+  .admin { grid-template-columns: minmax(0, 1fr); }
+  .side { min-width: 0; }
   .side { border-right: 0; border-bottom: 1px solid var(--line); padding: 10px 14px; }
   .side h4 { display: none; }
   .side nav { display: flex; overflow-x: auto; gap: 4px; }
@@ -737,3 +738,21 @@ body.exam-mode .topbar, body.exam-mode .footer { display: none; }
   .nav .mobile-signup { display: block; }
 }
 @media (max-width: 560px) { .kpis { grid-template-columns: 1fr 1fr; } .kpis > .kpi:last-child:nth-child(odd) { grid-column: 1 / -1; } }
+
+/* ---------- Alohida boshqaruv paneli (/panel) ---------- */
+.panel-bar { background: var(--night); border-bottom-color: transparent; }
+.panel-bar .brand, .panel-bar .brand:hover { color: #fff; }
+.panel-bar .btn-quiet { color: rgba(255,255,255,.8); }
+.panel-bar .btn-quiet:hover { background: rgba(255,255,255,.08); color: #fff; }
+.panel-bar .lang-btn, .panel-bar .user-chip { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.14); color: #fff; }
+.panel-bar .lang-btn svg { color: var(--saffron); }
+.panel-badge { font-family: var(--body); font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+  background: var(--saffron); color: #172033; padding: 3px 8px; border-radius: 6px; margin-left: 4px; }
+.panel-app .admin { min-height: calc(100vh - 64px); }
+.panel-login { min-height: calc(100vh - 64px); display: grid; place-items: center; padding: 32px 16px;
+  background: radial-gradient(ellipse at top, var(--lapis-soft), transparent 60%); }
+.panel-login form { width: 100%; max-width: 420px; }
+.panel-login-head { display: flex; gap: 14px; align-items: center; }
+.panel-login-head h1 { font-size: 1.4rem; }
+@media (max-width: 640px) { .panel-bar .site-link span { display: none; } }
+@media (max-width: 480px) { .panel-bar .nav-right .theme-btn, .panel-bar .nav-right .site-link { display: inline-flex; } .panel-bar .brand { font-size: 1rem; } .panel-bar .nav-right { gap: 4px; } }

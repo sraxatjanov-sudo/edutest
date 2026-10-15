@@ -24,9 +24,6 @@ const routes = [
   ['/profil', () => import('./pages/profile.js'), { auth: true }],
   ['/kirish', () => import('./pages/auth.js'), { mode: 'login' }],
   ['/royxat', () => import('./pages/auth.js'), { mode: 'register' }],
-  ['/boshqaruv', () => import('./pages/admin.js'), { staff: true, section: 'overview' }],
-  ['/boshqaruv/:section', () => import('./pages/admin.js'), { staff: true }],
-  ['/boshqaruv/:section/:id', () => import('./pages/admin.js'), { staff: true }],
 ].map(([pattern, load, opts = {}]) => {
   const keys = [];
   const re = new RegExp('^' + pattern.replace(/:(\w+)/g, (_, k) => { keys.push(k); return '([^/]+)'; }) + '/?$');
@@ -87,7 +84,6 @@ function renderNav() {
   const here = location.pathname;
   const links = [['/fanlar', t('Fanlar')], ['/reyting', t('Reyting')]];
   if (u) links.splice(1, 0, ['/kabinet', t('Kabinet')]);
-  if (isStaff()) links.push(['/boshqaruv', t('Boshqaruv')]);
   const nav = document.getElementById('nav');
   nav.innerHTML = links.map(([h, label]) => `<a href="${h}" data-link ${here === h || (h !== '/' && here.startsWith(h + '/')) || (h === '/fanlar' && here.startsWith('/fan/')) ? 'aria-current="page"' : ''}>${label}</a>`).join('')
     + (u ? '' : `<a href="/kirish" data-link class="mobile-only">${t('Kirish')}</a><a href="/royxat" data-link class="mobile-signup">${t("Ro'yxatdan o'tish")}</a>`)
@@ -106,7 +102,6 @@ function renderNav() {
            <a href="/kabinet#sertifikatlar" data-link>${icon('award')} ${t('Sertifikatlarim')}</a>
            <a href="/profil" data-link>${icon('user')} ${t('Profil sozlamalari')}</a>
            ${installEvent ? `<button id="install">${icon('phone')} ${t("Ilovani o'rnatish")}</button>` : ''}
-           ${isStaff() ? `<a href="/boshqaruv" data-link>${icon('grid')} ${t('Boshqaruv paneli')}</a>` : ''}
            <div class="sep"></div>
            <button id="logout">${icon('logout')} ${t('Chiqish')}</button>
          </div></div>`
@@ -160,6 +155,23 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenus
 window.addEventListener('popstate', () => render());
 window.addEventListener('auth:expired', () => { state.user = null; renderNav(); });
 
+// ---------- Tashriflar hisobi: brauzer uchun tasodifiy belgi (shaxsiy ma'lumot yo'q) ----------
+function visitorId() {
+  let v = null;
+  try { v = localStorage.getItem('vid'); } catch { /* */ }
+  if (!v || !/^[a-z0-9]{12,32}$/.test(v)) {
+    v = Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => (b % 36).toString(36)).join('');
+    try { localStorage.setItem('vid', v); } catch { /* */ }
+  }
+  return v;
+}
+let lastVisit = '';
+function trackVisit(path) {
+  if (path === lastVisit) return; // tilni almashtirish yoki qayta chizish sanalmaydi
+  lastVisit = path;
+  post('/api/visit', { vid: visitorId(), path }).catch(() => {});
+}
+
 export function setTitle(title) { document.title = title ? `${title} — EduTest` : t("EduTest — fanlar bo'yicha onlayn testlar"); }
 
 async function render({ keepScroll = false } = {}) {
@@ -178,6 +190,7 @@ async function render({ keepScroll = false } = {}) {
   }
   renderNav();
   if (!keepScroll) window.scrollTo(0, 0);
+  trackVisit(path);
 
   if (!found) {
     setTitle(t('Sahifa topilmadi'));
