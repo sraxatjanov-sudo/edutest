@@ -10,7 +10,7 @@
     "reset": "node -e \"for (const f of ['edutest.db','edutest.db-wal','edutest.db-shm']) require('fs').rmSync(f,{force:true}); console.log('Baza o\\'chirildi. npm start bilan qayta yarating')\"",
     "test": "node --no-warnings --test tests/*.test.js"
   },
-  "engines": { "node": ">=22.5" },
+  "engines": { "node": ">=22.13 <25" },
   "author": "Raxatjanov Shoxrux",
   "license": "MIT"
 }

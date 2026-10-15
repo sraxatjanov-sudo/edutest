@@ -1,0 +1,12 @@
+# Render sozlamalari: "Deploy to Render" tugmasi shu faylni o'qiydi
+services:
+  - type: web
+    name: edutest
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 22.22.0

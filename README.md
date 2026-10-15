@@ -17,9 +17,15 @@ EduTest — talabalar 10 ta fan bo'yicha onlayn imtihon topshiradigan va mashq q
 | Tashqi paketlar | **0 ta**: faqat Node.js'ning o'zi |
 | Avtomatik testlar | 9 ta (`npm test`) |
 
+## Internetga joylash (bir tugma bilan)
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/sraxatjanov-sudo/edutest)
+
+Tugmani bosing, GitHub bilan kiring va **Deploy Blueprint** (yoki **Apply**) ni tasdiqlang. Sozlamalar `render.yaml` faylidan avtomatik olinadi. 2–5 daqiqadan keyin `https://edutest-xxxx.onrender.com` ko'rinishidagi havola paydo bo'ladi.
+
 ## Ishga tushirish
 
-Talab: **Node.js 22.5 yoki yangiroq** (`node -v` bilan tekshiring). `npm install` shart emas.
+Talab: **Node.js 22.13 yoki yangiroq** (22 yoki 24-versiya) (`node -v` bilan tekshiring). `npm install` shart emas.
 
 ```bash
 cd edutest
