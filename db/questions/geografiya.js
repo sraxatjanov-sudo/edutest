@@ -1,5 +1,5 @@
 module.exports = {
-  slug: 'geografiya', name: 'Geografiya', icon: 'compass', color: '#0E7490', sort: 8,
+  slug: 'geografiya', name: 'Geografiya', icon: 'compass', color: '#0E7490', sort: 9,
   description: 'Materiklar, davlatlar, tabiat va O\'zbekiston geografiyasi.',
   questions: [
     ['O\'zbekiston poytaxti:', 'Toshkent', ['Samarqand', 'Buxoro', 'Namangan'], 'Toshkent — mamlakatning eng yirik shahri.', 1],

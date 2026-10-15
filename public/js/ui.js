@@ -1,4 +1,6 @@
 // Interfeys yordamchilari: ikonlar, xavfsiz HTML, bildirishnomalar, modal oynalar, formatlash, diagrammalar
+import { t, months } from './i18n.js';
+export { t };
 
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -69,23 +71,23 @@ export const fmtClock = (sec) => {
 };
 export const fmtDuration = (sec) => {
   const m = Math.floor(sec / 60), s = Math.round(sec % 60);
-  return m ? `${m} daq ${s} s` : `${s} s`;
+  return m ? t('{m} daq {s} s', { m, s }) : t('{s} s', { s });
 };
-const MONTHS = ['yan', 'fev', 'mar', 'apr', 'may', 'iyun', 'iyul', 'avg', 'sen', 'okt', 'noy', 'dek'];
 export const fmtDate = (ms, withTime = true) => {
   if (!ms) return '—';
   const d = new Date(ms);
-  const base = `${d.getDate()}-${MONTHS[d.getMonth()]}`;
+  const base = t('{d}-{mon}', { d: d.getDate(), mon: months()[d.getMonth()] });
   const year = d.getFullYear() !== new Date().getFullYear() ? ` ${d.getFullYear()}` : '';
   return withTime ? `${base}${year}, ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` : base + year;
 };
 export const fmtNum = (n) => Number(n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 export const initials = (name) => String(name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
-export const plural = (n, word) => `${fmtNum(n)} ta ${word}`;
-export const diffLabel = { 0: 'Aralash', 1: 'Oson', 2: 'O\'rta', 3: 'Qiyin' };
+// Ko'rsatilgan paytda joriy tilga tarjima qilinadigan lug'atlar
+const lazy = (map) => new Proxy({}, { get: (_, k) => (k in map ? t(map[k]) : undefined) });
+export const diffLabel = lazy({ 0: 'Aralash', 1: 'Oson', 2: "O'rta", 3: 'Qiyin' });
 export const diffDots = (d) => `<span class="diff" data-d="${d}" title="${diffLabel[d]}"><i></i><i></i><i></i></span>`;
-export const roleLabel = { student: 'Talaba', teacher: 'O\'qituvchi', admin: 'Administrator' };
-export const reasonLabel = { submitted: 'Topshirildi', timeout: 'Vaqt tugadi', violations: 'Qoidabuzarlik sababli yakunlandi' };
+export const roleLabel = lazy({ student: 'Talaba', teacher: "O'qituvchi", admin: 'Administrator' });
+export const reasonLabel = lazy({ submitted: 'Topshirildi', timeout: 'Vaqt tugadi', violations: 'Qoidabuzarlik sababli yakunlandi' });
 export const markOf = (p) => (p >= 86 ? 5 : p >= 71 ? 4 : p >= 56 ? 3 : 2);
 export const KEYS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
@@ -104,7 +106,7 @@ export function modal({ title, body, foot = '', wide = false, onOpen }) {
   const back = document.createElement('div');
   back.className = 'modal-back';
   back.innerHTML = `<div class="modal ${wide ? 'wide' : ''}" role="dialog" aria-modal="true" aria-labelledby="m-title">
-    <div class="modal-head"><h2 id="m-title">${esc(title)}</h2><button class="btn btn-quiet btn-icon" data-close aria-label="Yopish">${icon('x')}</button></div>
+    <div class="modal-head"><h2 id="m-title">${esc(title)}</h2><button class="btn btn-quiet btn-icon" data-close aria-label="${t('Yopish')}">${icon('x')}</button></div>
     <div class="modal-body">${body}</div>${foot ? `<div class="modal-foot">${foot}</div>` : ''}</div>`;
   const prev = document.activeElement;
   const close = () => { back.remove(); document.removeEventListener('keydown', onKey); prev?.focus?.(); };
@@ -119,13 +121,13 @@ export function modal({ title, body, foot = '', wide = false, onOpen }) {
   return { el, close };
 }
 
-export function confirmDialog({ title, text, ok = 'Tasdiqlash', danger = false }) {
+export function confirmDialog({ title, text, ok = t('Tasdiqlash'), danger = false }) {
   return new Promise((resolve) => {
     let done = false;
     const m = modal({
       title,
       body: `<p class="muted">${esc(text)}</p>`,
-      foot: `<button class="btn btn-ghost" data-close>Bekor qilish</button><button class="btn ${danger ? 'btn-danger' : ''}" data-ok>${esc(ok)}</button>`,
+      foot: `<button class="btn btn-ghost" data-close>${t('Bekor qilish')}</button><button class="btn ${danger ? 'btn-danger' : ''}" data-ok>${esc(ok)}</button>`,
     });
     m.el.querySelector('[data-ok]').addEventListener('click', () => { done = true; m.close(); resolve(true); });
     const obs = new MutationObserver(() => { if (!m.el.isConnected) { obs.disconnect(); if (!done) resolve(false); } });
@@ -137,10 +139,10 @@ export const skeleton = (n = 4) => `<div class="skeleton">${'<i></i>'.repeat(n)}
 export const emptyState = (title, text, action = '') => `<div class="empty"><h3>${esc(title)}</h3><p>${esc(text)}</p>${action}</div>`;
 
 export function pager(page, pages, total) {
-  if (pages <= 1) return `<div class="pager">Jami: ${fmtNum(total)}</div>`;
-  return `<div class="pager"><span>Jami: ${fmtNum(total)}, ${page}/${pages}-sahifa</span>
-    <button class="btn btn-ghost btn-sm" data-page="${page - 1}" ${page <= 1 ? 'disabled' : ''} aria-label="Oldingi sahifa">${icon('left')}</button>
-    <button class="btn btn-ghost btn-sm" data-page="${page + 1}" ${page >= pages ? 'disabled' : ''} aria-label="Keyingi sahifa">${icon('right')}</button></div>`;
+  if (pages <= 1) return `<div class="pager">${t('Jami: {n}', { n: fmtNum(total) })}</div>`;
+  return `<div class="pager"><span>${t('Jami: {n}, {p}/{pp}-sahifa', { n: fmtNum(total), p: page, pp: pages })}</span>
+    <button class="btn btn-ghost btn-sm" data-page="${page - 1}" ${page <= 1 ? 'disabled' : ''} aria-label="${t('Oldingi sahifa')}">${icon('left')}</button>
+    <button class="btn btn-ghost btn-sm" data-page="${page + 1}" ${page >= pages ? 'disabled' : ''} aria-label="${t('Keyingi sahifa')}">${icon('right')}</button></div>`;
 }
 
 // ---------- Diagrammalar ----------
@@ -162,7 +164,7 @@ export function vbars(container, data, { label = (d) => d.label, value = (d) => 
   const labels = data.map((d, i) => (data.length <= 16 || i % 2 === 0)
     ? `<text x="${pl + i * bw + bw / 2}" y="${H - 8}" text-anchor="middle">${esc(label(d))}</text>` : '').join('');
   container.classList.add('chart');
-  container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Ustunli diagramma">
+  container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${t('Ustunli diagramma')}">
     <g class="axis grid">${grid}</g><g class="marks">${bars}</g><g class="axis">${labels}</g></svg><div class="tip" hidden></div>`;
   const tip = container.querySelector('.tip');
   const svg = container.querySelector('svg');
@@ -194,7 +196,7 @@ function roundedTop(x, y, w, h, r) {
 
 // Gorizontal ustunlar: nom — chiziq — qiymat (rang faqat identifikatsiya nuqtasi uchun)
 export function hbars(rows, { max = 100, unit = '%' } = {}) {
-  if (!rows.length) return emptyState('Ma\'lumot yo\'q', 'Testlar topshirilgach shu yerda ko\'rinadi.');
+  if (!rows.length) return emptyState(t("Ma'lumot yo'q"), t("Testlar topshirilgach shu yerda ko'rinadi."));
   return `<div class="hbars">${rows.map((r) => `<div class="hbar" title="${esc(r.name)}: ${r.value ?? '—'}${unit}">
     <span class="name"><i class="dot" style="--c:${esc(r.color || '#1F4FA3')}"></i><span>${esc(r.name)}</span></span>
     <span class="track"><i style="width:${Math.min(100, ((r.value || 0) / max) * 100)}%"></i></span>

@@ -21,7 +21,7 @@ const publicUser = (u) => ({ id: u.id, name: u.name, email: u.email, role: u.rol
 module.exports = (r) => {
   r.post('/api/auth/register', ({ req, res, body, secure }) => {
     const lim = registerLimiter.hit(clientIp(req));
-    if (!lim.ok) throw new HttpError(429, `Juda ko'p urinish. ${Math.ceil(lim.retryAfter / 60)} daqiqadan keyin qayta urinib ko'ring`);
+    if (!lim.ok) throw new HttpError(429, "Juda ko'p urinish. {min} daqiqadan keyin qayta urinib ko'ring", { min: Math.ceil(lim.retryAfter / 60) });
     const name = v.str(body.name, 'Ism familiya', { min: 3, max: 80 });
     const email = v.email(body.email);
     const password = checkPassword(body.password);
@@ -36,7 +36,7 @@ module.exports = (r) => {
     const email = String(body.email ?? '').trim().toLowerCase();
     const key = `${clientIp(req)}|${email}`;
     const lim = loginLimiter.hit(key);
-    if (!lim.ok) throw new HttpError(429, `Juda ko'p muvaffaqiyatsiz urinish. ${Math.ceil(lim.retryAfter / 60)} daqiqadan keyin qayta urinib ko'ring`);
+    if (!lim.ok) throw new HttpError(429, "Juda ko'p muvaffaqiyatsiz urinish. {min} daqiqadan keyin qayta urinib ko'ring", { min: Math.ceil(lim.retryAfter / 60) });
     const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
     if (!user || !verifyPassword(String(body.password ?? ''), user.password_hash)) {
       throw new HttpError(401, 'Email yoki parol noto\'g\'ri');

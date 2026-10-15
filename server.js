@@ -9,6 +9,7 @@ const Router = require('./lib/router');
 const session = require('./lib/session');
 const exam = require('./lib/exam');
 const { send, readBody, HttpError, SECURITY_HEADERS } = require('./lib/http');
+const i18n = require('./lib/i18n');
 
 const PORT = Number(process.env.PORT) || 3000;
 const PUBLIC = path.join(__dirname, 'public');
@@ -56,7 +57,9 @@ const server = http.createServer(async (req, res) => {
     return serveStatic(req, res, pathname);
   }
 
+  const lang = i18n.langFrom(req);
   try {
+    i18n.setCurrent(lang);
     const found = router.match(req.method, pathname);
     if (!found) throw new HttpError(404, 'Bunday API manzil yo\'q');
     if (found.methodNotAllowed) throw new HttpError(405, 'Bu metod qo\'llab-quvvatlanmaydi');
@@ -76,12 +79,13 @@ const server = http.createServer(async (req, res) => {
 
     const body = req.method === 'GET' ? {} : await readBody(req);
     const secure = req.headers['x-forwarded-proto'] === 'https' || Boolean(req.socket.encrypted);
-    await route.handler({ req, res, params, body, user, query: url.searchParams, secure });
+    i18n.setCurrent(lang); // tana o'qilayotganda boshqa so'rov tilni o'zgartirgan bo'lishi mumkin
+    await route.handler({ req, res, params, body, user, query: url.searchParams, secure, lang });
   } catch (e) {
-    if (e instanceof HttpError) return send(res, e.status, { error: e.message });
-    if (String(e.message).includes('UNIQUE constraint')) return send(res, 409, { error: 'Bunday yozuv allaqachon mavjud' });
+    if (e instanceof HttpError) return send(res, e.status, { error: i18n.t(lang, e.message, e.params) });
+    if (String(e.message).includes('UNIQUE constraint')) return send(res, 409, { error: i18n.t(lang, 'Bunday yozuv allaqachon mavjud') });
     console.error(new Date().toISOString(), req.method, pathname, e);
-    send(res, 500, { error: 'Serverda kutilmagan xatolik. Birozdan keyin qayta urinib ko\'ring' });
+    send(res, 500, { error: i18n.t(lang, "Serverda kutilmagan xatolik. Birozdan keyin qayta urinib ko'ring") });
   }
 });
 

@@ -4,6 +4,24 @@ const v = require('../lib/validate');
 const exam = require('../lib/exam');
 const session = require('../lib/session');
 const { send, HttpError, SECURITY_HEADERS } = require('../lib/http');
+const { t, getCurrent } = require('../lib/i18n');
+
+// Ixtiyoriy tarjimalar: { ru: { name, description }, kaa: {...} } — faqat ko'rsatilgan maydonlar, bo'shlari tashlanadi
+function i18nFields(src, fields) {
+  const out = {};
+  for (const lang of ['ru', 'kaa']) {
+    const x = src && src[lang];
+    if (!x) continue;
+    const o = {};
+    for (const [f, max] of Object.entries(fields)) {
+      const val = String(x[f] ?? '').trim().slice(0, max);
+      if (val) o[f] = val;
+    }
+    if (Object.keys(o).length) out[lang] = o;
+  }
+  return Object.keys(out).length ? JSON.stringify(out) : null;
+}
+const parseJson = (s) => { try { return s ? JSON.parse(s) : null; } catch { return null; } };
 
 const STAFF = { roles: ['teacher', 'admin'] };
 const ADMIN = { roles: ['admin'] };
@@ -19,7 +37,8 @@ function subjectInput(body) {
   if (!slug) throw new HttpError(400, 'Qisqa nom faqat lotin harflari va raqamlardan iborat bo\'lsin');
   const color = /^#[0-9a-fA-F]{6}$/.test(body.color || '') ? body.color : '#1F4FA3';
   const icon = ['sigma', 'atom', 'flask', 'leaf', 'quill', 'globe-text', 'column', 'compass', 'chip', 'code', 'book'].includes(body.icon) ? body.icon : 'book';
-  return { name, slug, color, icon, description: v.str(body.description, 'Tavsif', { max: 300, required: false }) || null };
+  return { name, slug, color, icon, description: v.str(body.description, 'Tavsif', { max: 300, required: false }) || null,
+    i18n: i18nFields(body.i18n, { name: 60, description: 300 }) };
 }
 
 function testInput(body) {
@@ -36,6 +55,7 @@ function testInput(body) {
     max_violations: v.int(body.max_violations ?? 3, 'Qoidabuzarlik chegarasi', { min: 0, max: 50 }),
     show_review: v.bool(body.show_review),
     is_active: v.bool(body.is_active),
+    i18n: i18nFields(body.i18n, { title: 120, description: 400 }),
   };
 }
 
@@ -52,9 +72,9 @@ function parseImport(text) {
       else if (l.startsWith('-')) q.options.push(l.slice(1).trim());
       else if (l.startsWith('?')) q.explanation = l.slice(1).trim();
       else if (/^!\s*[123]$/.test(l)) q.difficulty = Number(l.slice(1));
-      else throw new HttpError(400, `${i + 1}-blok: "${l.slice(0, 30)}" qatori +, -, ? yoki ! bilan boshlanishi kerak`);
+      else throw new HttpError(400, '{n}-blok: "{line}" qatori +, -, ? yoki ! bilan boshlanishi kerak', { n: i + 1, line: l.slice(0, 30) });
     }
-    if (q.correct < 0) throw new HttpError(400, `${i + 1}-blok: to'g'ri javob "+" bilan belgilanmagan`);
+    if (q.correct < 0) throw new HttpError(400, "{n}-blok: to'g'ri javob \"+\" bilan belgilanmagan", { n: i + 1 });
     return v.question(q, i);
   });
 }
@@ -85,13 +105,13 @@ module.exports = (r) => {
         flagged: one("SELECT COUNT(*) AS c FROM attempts WHERE violations > 0"),
       },
       days,
-      bySubject: db.prepare(`SELECT s.name, s.color, COUNT(a.id) AS attempts, ROUND(AVG(a.percent)) AS avg
+      bySubject: db.prepare(`SELECT tr(s.i18n, 'name', s.name) AS name, s.color, COUNT(a.id) AS attempts, ROUND(AVG(a.percent)) AS avg
         FROM subjects s LEFT JOIN tests t ON t.subject_id = s.id LEFT JOIN attempts a ON a.test_id = t.id AND a.status = 'finished'
         GROUP BY s.id ORDER BY s.sort`).all(),
-      recentViolations: db.prepare(`SELECT v.type, v.created_at, a.id AS attempt_id, u.name, t.title FROM violations v
+      recentViolations: db.prepare(`SELECT v.type, v.created_at, a.id AS attempt_id, u.name, tr(t.i18n, 'title', t.title) AS title FROM violations v
         JOIN attempts a ON a.id = v.attempt_id JOIN users u ON u.id = a.user_id JOIN tests t ON t.id = a.test_id
-        ORDER BY v.id DESC LIMIT 8`).all().map((x) => ({ ...x, label: exam.VIOLATION_TYPES[x.type] || x.type })),
-      hardest: db.prepare(`SELECT q.id, q.text, s.name AS subject, COUNT(*) AS shown,
+        ORDER BY v.id DESC LIMIT 8`).all().map((x) => ({ ...x, label: exam.VIOLATION_TYPES[x.type] ? t(getCurrent(), exam.VIOLATION_TYPES[x.type]) : x.type })),
+      hardest: db.prepare(`SELECT q.id, tr(q.i18n, 'text', q.text) AS text, tr(s.i18n, 'name', s.name) AS subject, COUNT(*) AS shown,
           ROUND(100.0 * SUM(CASE WHEN json_extract(ai.option_order, '$[' || ai.chosen || ']') = q.correct THEN 1 ELSE 0 END) / COUNT(*)) AS rate
         FROM attempt_items ai JOIN attempts a ON a.id = ai.attempt_id AND a.status = 'finished'
         JOIN questions q ON q.id = ai.question_id JOIN subjects s ON s.id = q.subject_id
@@ -101,16 +121,17 @@ module.exports = (r) => {
 
   // ---------- Fanlar ----------
   r.get('/api/admin/subjects', ({ res }) => {
-    send(res, 200, { subjects: db.prepare(`SELECT s.*, (SELECT COUNT(*) FROM questions q WHERE q.subject_id = s.id AND q.archived = 0) AS question_count,
-      (SELECT COUNT(*) FROM tests t WHERE t.subject_id = s.id) AS test_count FROM subjects s ORDER BY s.sort, s.name`).all() });
+    send(res, 200, { subjects: db.prepare(`SELECT s.*, tr(s.i18n, 'name', s.name) AS label, tr(s.i18n, 'description', s.description) AS label_description, (SELECT COUNT(*) FROM questions q WHERE q.subject_id = s.id AND q.archived = 0) AS question_count,
+      (SELECT COUNT(*) FROM tests t WHERE t.subject_id = s.id) AS test_count FROM subjects s ORDER BY s.sort, s.name`).all()
+      .map((x) => ({ ...x, i18n: parseJson(x.i18n) })) });
   }, STAFF);
 
   r.post('/api/admin/subjects', ({ res, body }) => {
     const s = subjectInput(body);
     if (db.prepare('SELECT 1 FROM subjects WHERE slug = ?').get(s.slug)) throw new HttpError(409, 'Bunday qisqa nomli fan mavjud');
     const sort = db.prepare('SELECT COALESCE(MAX(sort), 0) + 1 AS n FROM subjects').get().n;
-    const id = Number(db.prepare('INSERT INTO subjects (slug, name, description, icon, color, sort) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(s.slug, s.name, s.description, s.icon, s.color, sort).lastInsertRowid);
+    const id = Number(db.prepare('INSERT INTO subjects (slug, name, description, icon, color, sort, i18n) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run(s.slug, s.name, s.description, s.icon, s.color, sort, s.i18n).lastInsertRowid);
     send(res, 201, { id });
   }, STAFF);
 
@@ -118,8 +139,8 @@ module.exports = (r) => {
     const s = subjectInput(body);
     const clash = db.prepare('SELECT id FROM subjects WHERE slug = ? AND id != ?').get(s.slug, Number(params.id));
     if (clash) throw new HttpError(409, 'Bunday qisqa nomli fan mavjud');
-    const r2 = db.prepare('UPDATE subjects SET slug = ?, name = ?, description = ?, icon = ?, color = ? WHERE id = ?')
-      .run(s.slug, s.name, s.description, s.icon, s.color, Number(params.id));
+    const r2 = db.prepare('UPDATE subjects SET slug = ?, name = ?, description = ?, icon = ?, color = ?, i18n = ? WHERE id = ?')
+      .run(s.slug, s.name, s.description, s.icon, s.color, s.i18n, Number(params.id));
     if (!r2.changes) throw new HttpError(404, 'Fan topilmadi');
     send(res, 200, { ok: true });
   }, STAFF);
@@ -135,14 +156,15 @@ module.exports = (r) => {
     const diff = Number(query.get('difficulty')) || 0;
     const q = query.get('q') || '';
     const archived = query.get('archived') === '1' ? 1 : 0;
-    const where = `WHERE q.archived = ? AND (? = 0 OR q.subject_id = ?) AND (? = 0 OR q.difficulty = ?) AND (q.text LIKE ? ESCAPE '\\' OR q.options LIKE ? ESCAPE '\\')`;
-    const args = [archived, sid, sid, diff, diff, like(q), like(q)];
+    const where = `WHERE q.archived = ? AND (? = 0 OR q.subject_id = ?) AND (? = 0 OR q.difficulty = ?) AND (q.text LIKE ? ESCAPE '\\' OR q.options LIKE ? ESCAPE '\\' OR IFNULL(q.i18n, '') LIKE ? ESCAPE '\\')`;
+    const args = [archived, sid, sid, diff, diff, like(q), like(q), like(q)];
     const total = db.prepare(`SELECT COUNT(*) AS c FROM questions q ${where}`).get(...args).c;
     const p = page(query);
-    const rows = db.prepare(`SELECT q.id, q.subject_id, q.text, q.options, q.correct, q.explanation, q.difficulty, q.archived, s.name AS subject, s.color,
+    const rows = db.prepare(`SELECT q.id, q.subject_id, q.text, q.options, q.correct, q.explanation, q.difficulty, q.archived, q.i18n,
+        tr(q.i18n, 'text', q.text) AS label, tr(q.i18n, 'options', q.options) AS label_options, tr(s.i18n, 'name', s.name) AS subject, s.color,
         (SELECT COUNT(*) FROM attempt_items ai WHERE ai.question_id = q.id) AS used
       FROM questions q JOIN subjects s ON s.id = q.subject_id ${where} ORDER BY q.id DESC LIMIT ? OFFSET ?`)
-      .all(...args, PAGE, (p - 1) * PAGE).map((x) => ({ ...x, options: JSON.parse(x.options) }));
+      .all(...args, PAGE, (p - 1) * PAGE).map((x) => ({ ...x, options: JSON.parse(x.options), label_options: JSON.parse(x.label_options), i18n: parseJson(x.i18n) }));
     send(res, 200, { questions: rows, total, page: p, pages: Math.max(1, Math.ceil(total / PAGE)) });
   }, STAFF);
 
@@ -150,8 +172,8 @@ module.exports = (r) => {
     const sid = v.int(body.subject_id, 'Fan', { min: 1 });
     if (!db.prepare('SELECT 1 FROM subjects WHERE id = ?').get(sid)) throw new HttpError(400, 'Fan topilmadi');
     const q = v.question(body);
-    const id = Number(db.prepare('INSERT INTO questions (subject_id, text, options, correct, explanation, difficulty, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-      .run(sid, q.text, JSON.stringify(q.options), q.correct, q.explanation, q.difficulty, Date.now()).lastInsertRowid);
+    const id = Number(db.prepare('INSERT INTO questions (subject_id, text, options, correct, explanation, difficulty, i18n, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(sid, q.text, JSON.stringify(q.options), q.correct, q.explanation, q.difficulty, q.i18n ? JSON.stringify(q.i18n) : null, Date.now()).lastInsertRowid);
     send(res, 201, { id });
   }, STAFF);
 
@@ -166,13 +188,13 @@ module.exports = (r) => {
     if (used && JSON.parse(old.options).length !== q.options.length) {
       db.tx(() => {
         db.prepare('UPDATE questions SET archived = 1 WHERE id = ?').run(id);
-        db.prepare('INSERT INTO questions (subject_id, text, options, correct, explanation, difficulty, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-          .run(sid, q.text, JSON.stringify(q.options), q.correct, q.explanation, q.difficulty, Date.now());
+        db.prepare('INSERT INTO questions (subject_id, text, options, correct, explanation, difficulty, i18n, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+          .run(sid, q.text, JSON.stringify(q.options), q.correct, q.explanation, q.difficulty, q.i18n ? JSON.stringify(q.i18n) : null, Date.now());
       });
       return send(res, 200, { ok: true, replaced: true });
     }
-    db.prepare('UPDATE questions SET subject_id = ?, text = ?, options = ?, correct = ?, explanation = ?, difficulty = ? WHERE id = ?')
-      .run(sid, q.text, JSON.stringify(q.options), q.correct, q.explanation, q.difficulty, id);
+    db.prepare('UPDATE questions SET subject_id = ?, text = ?, options = ?, correct = ?, explanation = ?, difficulty = ?, i18n = ? WHERE id = ?')
+      .run(sid, q.text, JSON.stringify(q.options), q.correct, q.explanation, q.difficulty, q.i18n ? JSON.stringify(q.i18n) : null, id);
     send(res, 200, { ok: true });
   }, STAFF);
 
@@ -203,28 +225,28 @@ module.exports = (r) => {
 
   // ---------- Testlar ----------
   r.get('/api/admin/tests', ({ res }) => {
-    send(res, 200, { tests: db.prepare(`SELECT t.*, s.name AS subject, s.color,
+    send(res, 200, { tests: db.prepare(`SELECT t.*, tr(t.i18n, 'title', t.title) AS label, tr(s.i18n, 'name', s.name) AS subject, s.color,
         (SELECT COUNT(*) FROM questions q WHERE q.subject_id = t.subject_id AND q.archived = 0 AND (t.difficulty = 0 OR q.difficulty = t.difficulty)) AS pool,
         (SELECT COUNT(*) FROM attempts a WHERE a.test_id = t.id AND a.status = 'finished') AS attempts,
         (SELECT ROUND(AVG(percent)) FROM attempts a WHERE a.test_id = t.id AND a.status = 'finished') AS avg
-      FROM tests t JOIN subjects s ON s.id = t.subject_id ORDER BY s.sort, t.id`).all() });
+      FROM tests t JOIN subjects s ON s.id = t.subject_id ORDER BY s.sort, t.id`).all().map((x) => ({ ...x, i18n: parseJson(x.i18n) })) });
   }, STAFF);
 
   r.post('/api/admin/tests', ({ res, body }) => {
     const t = testInput(body);
     const id = Number(db.prepare(`INSERT INTO tests (subject_id, title, description, question_count, time_limit, difficulty, max_attempts,
-      max_violations, show_review, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      max_violations, show_review, is_active, i18n, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
       .run(t.subject_id, t.title, t.description, t.question_count, t.time_limit, t.difficulty, t.max_attempts, t.max_violations,
-        t.show_review, t.is_active, Date.now()).lastInsertRowid);
+        t.show_review, t.is_active, t.i18n, Date.now()).lastInsertRowid);
     send(res, 201, { id });
   }, STAFF);
 
   r.put('/api/admin/tests/:id', ({ res, body, params }) => {
     const t = testInput(body);
     const n = db.prepare(`UPDATE tests SET subject_id = ?, title = ?, description = ?, question_count = ?, time_limit = ?, difficulty = ?,
-      max_attempts = ?, max_violations = ?, show_review = ?, is_active = ? WHERE id = ?`)
+      max_attempts = ?, max_violations = ?, show_review = ?, is_active = ?, i18n = ? WHERE id = ?`)
       .run(t.subject_id, t.title, t.description, t.question_count, t.time_limit, t.difficulty, t.max_attempts, t.max_violations,
-        t.show_review, t.is_active, Number(params.id)).changes;
+        t.show_review, t.is_active, t.i18n, Number(params.id)).changes;
     if (!n) throw new HttpError(404, 'Test topilmadi');
     send(res, 200, { ok: true });
   }, STAFF);
@@ -251,18 +273,19 @@ module.exports = (r) => {
     const total = db.prepare(`SELECT COUNT(*) AS c ${attemptsFrom} ${where}`).get(...args).c;
     const p = page(query);
     const rows = db.prepare(`SELECT a.id, a.score, a.total, a.percent, a.violations, a.started_at, a.finished_at, a.finish_reason,
-        u.name, u.email, u.group_name AS "group", t.title, s.name AS subject, s.color ${attemptsFrom} ${where}
+        u.name, u.email, u.group_name AS "group", tr(t.i18n, 'title', t.title) AS title, tr(s.i18n, 'name', s.name) AS subject, s.color ${attemptsFrom} ${where}
       ORDER BY a.finished_at DESC LIMIT ? OFFSET ?`).all(...args, PAGE, (p - 1) * PAGE);
     send(res, 200, { attempts: rows, total, page: p, pages: Math.max(1, Math.ceil(total / PAGE)) });
   }, STAFF);
 
   r.get('/api/admin/attempts.csv', ({ res, query }) => {
     const { where, args } = attemptsQuery(query);
-    const rows = db.prepare(`SELECT a.id, u.name, u.email, u.group_name, s.name AS subject, t.title, a.score, a.total, a.percent,
+    const rows = db.prepare(`SELECT a.id, u.name, u.email, u.group_name, tr(s.i18n, 'name', s.name) AS subject, tr(t.i18n, 'title', t.title) AS title, a.score, a.total, a.percent,
         a.violations, a.finish_reason, a.started_at, a.finished_at ${attemptsFrom} ${where} ORDER BY a.finished_at DESC`).all(...args);
-    const reasons = { submitted: 'Topshirildi', timeout: 'Vaqt tugadi', violations: 'Qoidabuzarlik' };
+    const L = getCurrent();
+    const reasons = { submitted: t(L, 'Topshirildi'), timeout: t(L, 'Vaqt tugadi'), violations: t(L, 'Qoidabuzarlik') };
     const fmt = (ms) => new Date(ms + 5 * 36e5).toISOString().slice(0, 16).replace('T', ' ');
-    const lines = [['ID', 'Talaba', 'Email', 'Guruh', 'Fan', 'Test', 'Ball', 'Jami', 'Foiz', 'Baho', 'Qoidabuzarlik', 'Yakunlanish', 'Boshlangan', 'Yakunlangan', 'Davomiyligi (daq)']]
+    const lines = [['ID', 'Talaba', 'Email', 'Guruh', 'Fan', 'Test', 'Ball', 'Jami', 'Foiz', 'Baho', 'Qoidabuzarlik', 'Yakunlanish', 'Boshlangan', 'Yakunlangan', 'Davomiyligi (daq)'].map((h) => t(L, h))]
       .concat(rows.map((x) => [x.id, x.name, x.email, x.group_name, x.subject, x.title, x.score, x.total, x.percent, exam.grade(x.percent).mark,
         x.violations, reasons[x.finish_reason] || x.finish_reason, fmt(x.started_at), fmt(x.finished_at), Math.round((x.finished_at - x.started_at) / 6e4)]));
     const csv = '﻿' + lines.map((l) => l.map(csvCell).join(';')).join('\r\n');

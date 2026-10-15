@@ -1,5 +1,5 @@
 module.exports = {
-  slug: 'informatika', name: 'Informatika', icon: 'chip', color: '#334155', sort: 9,
+  slug: 'informatika', name: 'Informatika', icon: 'chip', color: '#334155', sort: 10,
   description: 'Kompyuter qurilmasi, sanoq sistemalari, tarmoqlar va xavfsizlik.',
   questions: [
     ['1 bayt necha bitdan iborat?', '8', ['4', '16', '1024'], 'Bit — eng kichik axborot birligi.', 1],

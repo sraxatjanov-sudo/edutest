@@ -1,6 +1,6 @@
 // `...` ichidagi matn interfeysda kod ko'rinishida chiqadi
 module.exports = {
-  slug: 'dasturlash', name: 'Dasturlash', icon: 'code', color: '#4338CA', sort: 10,
+  slug: 'dasturlash', name: 'Dasturlash', icon: 'code', color: '#4338CA', sort: 11,
   description: 'Python, JavaScript, HTML/CSS va dasturlash asoslari.',
   questions: [
     ['Python da ekranga chiqarish funksiyasi:', '`print()`', ['`echo()`', '`console.log()`', '`write()`'], '`console.log()` — JavaScriptda.', 1],

@@ -510,3 +510,31 @@ body.exam-mode .topbar, body.exam-mode .footer { display: none; }
 .nav .mobile-only { display: none; }
 @media (max-width: 760px) { .nav .mobile-only { display: block; } }
 @media (max-width: 480px) { .nav-right .btn-quiet:not(.menu-btn) { display: none; } }
+
+/* ---------- Til tanlagich ---------- */
+.lang-btn { display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 12px; border: 1px solid var(--line); border-radius: 99px;
+  background: var(--surface); cursor: pointer; font-weight: 700; font-size: .85rem; color: var(--ink-2); letter-spacing: .02em; }
+.lang-btn:hover { border-color: var(--line-strong); color: var(--ink); }
+.lang-btn svg { width: 18px; height: 18px; color: var(--lapis); }
+.lang-menu { min-width: 200px; }
+.lang-menu button { justify-content: flex-start; }
+.lang-menu .lang-code { display: inline-grid; place-items: center; width: 30px; height: 22px; border-radius: 6px; background: var(--paper);
+  font-size: .72rem; font-weight: 800; color: var(--ink-2); flex: none; }
+.lang-menu button[aria-checked="true"] { color: var(--lapis-deep); font-weight: 700; }
+.lang-menu button[aria-checked="true"] .lang-code { background: var(--lapis); color: #fff; }
+.lang-menu button svg { width: 16px; height: 16px; color: var(--lapis); }
+@media (max-width: 760px) { .lang-btn { padding: 0 9px; } }
+
+/* ---------- Tarjima maydonlari (boshqaruv) ---------- */
+.tr-box { border: 1px solid var(--line); border-radius: var(--r); background: var(--surface-2); }
+.tr-box summary { cursor: pointer; padding: 12px 14px; font-weight: 700; font-size: .9rem; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; list-style: none; }
+.tr-box summary::-webkit-details-marker { display: none; }
+.tr-box summary::after { content: '+'; margin-left: auto; font-size: 1.1rem; color: var(--muted); }
+.tr-box[open] summary::after { content: '−'; }
+.tr-box summary svg { width: 18px; height: 18px; color: var(--lapis); }
+.tr-box summary .muted { font-weight: 500; }
+.tr-body { padding: 0 14px 14px; display: grid; gap: 14px; }
+.tr-lang { border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px 4px; margin: 0; background: var(--surface); display: grid; gap: 10px; }
+.tr-lang legend { font-weight: 800; font-size: .8rem; padding: 0 6px; color: var(--lapis-deep); }
+.tr-opt { grid-template-columns: 28px 1fr 0; }
+.tr-opt .key { width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center; font-weight: 800; font-size: .78rem; background: var(--paper); border: 1px solid var(--line); }

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>EduTest — fanlar bo'yicha onlayn testlar</title>
-  <meta name="description" content="EduTest — 10 ta fan bo'yicha 360 dan ortiq savol, adolatli onlayn imtihon, mashq rejimi va reyting.">
+  <meta name="description" content="EduTest — 11 ta fan bo'yicha 400 dan ortiq savol, adolatli onlayn imtihon, mashq rejimi va reyting. O'zbek, rus va qoraqalpoq tillarida.">
   <meta name="theme-color" content="#163A7A">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,7 +14,7 @@
   <script type="module" src="/js/app.js"></script>
 </head>
 <body>
-  <a class="sr-only" href="#main">Asosiy mazmunga o'tish</a>
+  <a class="sr-only" href="#main" id="skip">Asosiy mazmunga o'tish</a>
   <header class="topbar">
     <div class="wrap">
       <a href="/" class="brand" data-link><img class="brand-mark" src="/img/logo.svg" alt="">EduTest</a>
@@ -25,11 +25,11 @@
   <main id="main" tabindex="-1"></main>
   <footer class="footer">
     <div class="wrap">
-      <span>EduTest — fanlar bo'yicha onlayn test platformasi</span>
-      <span>Muallif: Raxatjanov Shoxrux, <span id="year"></span></span>
+      <span id="foot-about">EduTest — fanlar bo'yicha onlayn test platformasi</span>
+      <span id="foot-author">Muallif: Raxatjanov Shoxrux</span>
     </div>
   </footer>
   <div class="toasts" id="toasts" aria-live="polite"></div>
-  <noscript><p class="wrap">EduTest ishlashi uchun brauzerda JavaScript yoqilgan bo'lishi kerak.</p></noscript>
+  <noscript><p class="wrap">EduTest ishlashi uchun brauzerda JavaScript yoqilgan bo'lishi kerak. / Для работы EduTest включите JavaScript в браузере.</p></noscript>
 </body>
 </html>

@@ -1,61 +1,61 @@
 // Imtihon sahifasi: qoidalar, savollar, taymer va nusxa olishga qarshi himoya
 import { get, post, put } from '../api.js';
-import { esc, rich, icon, KEYS, fmtClock, diffLabel, modal, toast } from '../ui.js';
+import { esc, rich, icon, KEYS, fmtClock, diffLabel, modal, toast, t } from '../ui.js';
 
 const fsSupported = () => Boolean(document.documentElement.requestFullscreen);
 const inFullscreen = () => Boolean(document.fullscreenElement);
 
 export default async function exam(main, { id }, { state, setTitle, navigate }) {
   const info = await get(`/api/tests/${Number(id)}`);
-  const t = info.test;
-  setTitle(t.title);
+  const tt = info.test;
+  setTitle(tt.title);
   let teardown = () => {};
 
   // ---------- 1. Qoidalar ekrani ----------
-  const left = t.maxAttempts ? t.maxAttempts - info.used : null;
+  const left = tt.maxAttempts ? tt.maxAttempts - info.used : null;
   const resume = info.active;
   main.innerHTML = `<div class="wrap page"><div class="exam-intro">
-    <nav class="crumbs"><a href="/fanlar" data-link>Fanlar</a><span>/</span><a href="/fan/${esc(t.slug)}" data-link>${esc(t.subject)}</a><span>/</span><span>Imtihon</span></nav>
+    <nav class="crumbs"><a href="/fanlar" data-link>${t('Fanlar')}</a><span>/</span><a href="/fan/${esc(tt.slug)}" data-link>${esc(tt.subject)}</a><span>/</span><span>${t('Imtihon')}</span></nav>
     <div class="panel">
       <div class="panel-body stack" style="--gap:20px">
-        <div><span class="tag"><i class="dot" style="--c:${esc(t.color)}"></i>${esc(t.subject)}</span>
-          <h1 style="margin-top:14px">${esc(t.title)}</h1>
-          ${t.description ? `<p class="muted" style="margin-top:8px">${esc(t.description)}</p>` : ''}</div>
+        <div><span class="tag"><i class="dot" style="--c:${esc(tt.color)}"></i>${esc(tt.subject)}</span>
+          <h1 style="margin-top:14px">${esc(tt.title)}</h1>
+          ${tt.description ? `<p class="muted" style="margin-top:8px">${esc(tt.description)}</p>` : ''}</div>
         <div class="kpis">
-          <div class="kpi"><div class="v">${t.questionCount}</div><div class="l">savol</div></div>
-          <div class="kpi"><div class="v">${t.timeLimit}</div><div class="l">daqiqa</div></div>
-          <div class="kpi"><div class="v">${diffLabel[t.difficulty]}</div><div class="l">qiyinlik</div></div>
-          <div class="kpi"><div class="v">${left === null ? '∞' : Math.max(0, left)}</div><div class="l">qolgan urinish</div></div>
+          <div class="kpi"><div class="v">${tt.questionCount}</div><div class="l">${t('savol')}</div></div>
+          <div class="kpi"><div class="v">${tt.timeLimit}</div><div class="l">${t('daqiqa')}</div></div>
+          <div class="kpi"><div class="v">${diffLabel[tt.difficulty]}</div><div class="l">${t('qiyinlik')}</div></div>
+          <div class="kpi"><div class="v">${left === null ? '∞' : Math.max(0, left)}</div><div class="l">${t('qolgan urinish')}</div></div>
         </div>
-        ${resume ? `<div class="notice notice-warn">${icon('clock')}<div><b>Sizda tugallanmagan urinish bor.</b> Qolgan vaqt: ${fmtClock(resume.remaining)}. Javoblaringiz saqlangan, davom ettirishingiz mumkin.</div></div>` : ''}
+        ${resume ? `<div class="notice notice-warn">${icon('clock')}<div><b>${t('Sizda tugallanmagan urinish bor.')}</b> ${t('Qolgan vaqt: {time}. Javoblaringiz saqlangan, davom ettirishingiz mumkin.', { time: fmtClock(resume.remaining) })}</div></div>` : ''}
         <div>
-          <h2 style="font-size:1.1rem">Imtihon qoidalari</h2>
+          <h2 style="font-size:1.1rem">${t('Imtihon qoidalari')}</h2>
           <div class="rules">
-            <div class="rule">${icon('shuffle')}<p><b>Savollar sizga alohida tanlangan.</b> Savollar va variantlar tartibi boshqa talabalarnikidan farq qiladi.</p></div>
-            <div class="rule">${icon('maximize')}<p><b>Test to'liq ekranda o'tadi.</b> Undan chiqish, boshqa oyna yoki ilovaga o'tish qoidabuzarlik deb hisoblanadi.</p></div>
-            <div class="rule">${icon('copy')}<p><b>Nusxa olish, matn qo'yish, o'ng tugma va chop etish o'chirilgan.</b> Bunday urinishlar ham qayd etiladi.</p></div>
-            <div class="rule">${icon('alert')}<p><b>${t.maxViolations ? `${t.maxViolations} ta qoidabuzarlikdan keyin test avtomatik yakunlanadi.` : 'Barcha qoidabuzarliklar o\'qituvchiga ko\'rsatiladi.'}</b> Har biri vaqti bilan jurnalga yoziladi.</p></div>
-            <div class="rule">${icon('clock')}<p><b>Vaqt server bo'yicha hisoblanadi.</b> Sahifa yopilsa ham taymer to'xtamaydi. Vaqt tugashi bilan javoblaringiz avtomatik topshiriladi.</p></div>
+            <div class="rule">${icon('shuffle')}<p><b>${t('Savollar sizga alohida tanlangan.')}</b> ${t('Savollar va variantlar tartibi boshqa talabalarnikidan farq qiladi.')}</p></div>
+            <div class="rule">${icon('maximize')}<p><b>${t("Test to'liq ekranda o'tadi.")}</b> ${t("Undan chiqish, boshqa oyna yoki ilovaga o'tish qoidabuzarlik deb hisoblanadi.")}</p></div>
+            <div class="rule">${icon('copy')}<p><b>${t("Nusxa olish, matn qo'yish, o'ng tugma va chop etish o'chirilgan.")}</b> ${t('Bunday urinishlar ham qayd etiladi.')}</p></div>
+            <div class="rule">${icon('alert')}<p><b>${tt.maxViolations ? t('{n} ta qoidabuzarlikdan keyin test avtomatik yakunlanadi.', { n: tt.maxViolations }) : t("Barcha qoidabuzarliklar o'qituvchiga ko'rsatiladi.")}</b> ${t('Har biri vaqti bilan jurnalga yoziladi.')}</p></div>
+            <div class="rule">${icon('clock')}<p><b>${t("Vaqt server bo'yicha hisoblanadi.")}</b> ${t("Sahifa yopilsa ham taymer to'xtamaydi. Vaqt tugashi bilan javoblaringiz avtomatik topshiriladi.")}</p></div>
           </div>
         </div>
-        <label class="check"><input type="checkbox" id="agree"> <span>Qoidalar bilan tanishdim va testni mustaqil yechishga roziman</span></label>
+        <label class="check"><input type="checkbox" id="agree"> <span>${t('Qoidalar bilan tanishdim va testni mustaqil yechishga roziman')}</span></label>
         <p class="form-error" id="err"></p>
         <div class="row">
-          <button class="btn btn-lg" id="go" disabled>${icon('play')} ${resume ? 'Davom ettirish' : 'Testni boshlash'}</button>
-          <a class="btn btn-ghost btn-lg" href="/fan/${esc(t.slug)}" data-link>Orqaga</a>
+          <button class="btn btn-lg" id="go" disabled>${icon('play')} ${resume ? t('Davom ettirish') : t('Testni boshlash')}</button>
+          <a class="btn btn-ghost btn-lg" href="/fan/${esc(tt.slug)}" data-link>${t('Orqaga')}</a>
         </div>
       </div>
     </div></div></div>`;
 
   const go = main.querySelector('#go');
   main.querySelector('#agree').addEventListener('change', (e) => { go.disabled = !e.target.checked || (left !== null && left <= 0 && !resume); });
-  if (left !== null && left <= 0 && !resume) main.querySelector('#err').textContent = 'Bu test uchun urinishlar soni tugagan.';
+  if (left !== null && left <= 0 && !resume) main.querySelector('#err').textContent = t('Bu test uchun urinishlar soni tugagan.');
 
   go.addEventListener('click', async () => {
     go.disabled = true;
     try {
       if (fsSupported()) await document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
-      const { attemptId } = await post(`/api/tests/${t.id}/start`);
+      const { attemptId } = await post(`/api/tests/${tt.id}/start`);
       const { attempt, result } = await get(`/api/attempts/${attemptId}`);
       if (result) return navigate(`/natija/${attemptId}`, { replace: true });
       teardown = run(attempt);
@@ -82,7 +82,7 @@ export default async function exam(main, { id }, { state, setTitle, navigate }) 
     const on = (target, ev, fn, opts) => { target.addEventListener(ev, fn, opts); listeners.push([target, ev, fn, opts]); };
 
     document.body.classList.add('exam-mode');
-    window.onbeforeunload = () => 'Test hali yakunlanmagan';
+    window.onbeforeunload = () => t('Test hali yakunlanmagan');
 
     main.innerHTML = `<div class="exam">
       <div class="exam-bar">
@@ -90,8 +90,8 @@ export default async function exam(main, { id }, { state, setTitle, navigate }) 
           <img src="/img/logo.svg" alt="" width="30" height="30">
           <div class="exam-title"><b>${esc(a.test.title)}</b><span>${esc(state.user.name)}</span></div>
           <div class="timer num" id="timer" role="timer" aria-live="off">${icon('clock')}<span>--:--</span></div>
-          <div class="guard-badge" id="guard" title="Qoidabuzarliklar soni">${icon('shield')}<span class="num" id="vcount"></span><span class="txt">ogohlantirish</span></div>
-          <button class="btn btn-ghost btn-sm" id="finish">Yakunlash</button>
+          <div class="guard-badge" id="guard" title="${t('Qoidabuzarliklar soni')}">${icon('shield')}<span class="num" id="vcount"></span><span class="txt">${t('ogohlantirish')}</span></div>
+          <button class="btn btn-ghost btn-sm" id="finish">${t('Yakunlash')}</button>
         </div>
         <div class="exam-progress"><i id="prog"></i></div>
       </div>
@@ -100,10 +100,10 @@ export default async function exam(main, { id }, { state, setTitle, navigate }) 
         <div class="wrap">
           <section class="qcard" id="qcard" aria-live="polite"></section>
           <aside class="panel panel-pad palette-card">
-            <div class="spread" style="margin-bottom:14px"><h3>Savollar</h3><span class="small muted num" id="answered"></span></div>
-            <div class="palette" id="palette">${a.items.map((_, k) => `<button data-k="${k}" aria-label="${k + 1}-savol">${k + 1}</button>`).join('')}</div>
-            <div class="legend"><span><i class="a"></i>Javob berilgan</span><span><i></i>Javob berilmagan</span><span><i class="f"></i>Belgilangan</span></div>
-            <div class="save-state" id="save" style="margin-top:14px">${icon('check')} Javoblar saqlanmoqda</div>
+            <div class="spread" style="margin-bottom:14px"><h3>${t('Savollar')}</h3><span class="small muted num" id="answered"></span></div>
+            <div class="palette" id="palette">${a.items.map((_, k) => `<button data-k="${k}" aria-label="${t('{n}-savol', { n: k + 1 })}">${k + 1}</button>`).join('')}</div>
+            <div class="legend"><span><i class="a"></i>${t('Javob berilgan')}</span><span><i></i>${t('Javob berilmagan')}</span><span><i class="f"></i>${t('Belgilangan')}</span></div>
+            <div class="save-state" id="save" style="margin-top:14px">${icon('check')} ${t('Javoblar saqlanmoqda')}</div>
           </aside>
         </div>
       </div>
@@ -136,15 +136,15 @@ export default async function exam(main, { id }, { state, setTitle, navigate }) 
       cur = Math.max(0, Math.min(N - 1, k));
       const q = a.items[cur];
       $q.innerHTML = `
-        <div class="qcard-top"><span class="qnum">${cur + 1}-savol / ${N}</span>
-          <button class="btn btn-ghost btn-sm flag-btn" id="flag" aria-pressed="${q.flagged}">${icon('flag')} ${q.flagged ? 'Belgilangan' : 'Keyinroq qaytaman'}</button></div>
+        <div class="qcard-top"><span class="qnum">${t('{n}-savol / {total}', { n: cur + 1, total: N })}</span>
+          <button class="btn btn-ghost btn-sm flag-btn" id="flag" aria-pressed="${q.flagged}">${icon('flag')} ${q.flagged ? t('Belgilangan') : t('Keyinroq qaytaman')}</button></div>
         <div class="qtext">${rich(q.text)}</div>
-        <div class="options" role="radiogroup" aria-label="Javob variantlari">
+        <div class="options" role="radiogroup" aria-label="${t('Javob variantlari')}">
           ${q.options.map((o, i) => `<button class="opt" role="radio" aria-checked="${q.chosen === i}" data-i="${i}"><span class="key">${KEYS[i]}</span><span>${rich(o)}</span></button>`).join('')}
         </div>
         <div class="qnav">
-          <button class="btn btn-ghost" id="prev" ${cur === 0 ? 'disabled' : ''}>${icon('left')} Oldingi</button>
-          ${cur < N - 1 ? `<button class="btn" id="next">Keyingi ${icon('right')}</button>` : '<button class="btn btn-saffron" id="next">Testni yakunlash</button>'}
+          <button class="btn btn-ghost" id="prev" ${cur === 0 ? 'disabled' : ''}>${icon('left')} ${t('Oldingi')}</button>
+          ${cur < N - 1 ? `<button class="btn" id="next">${t('Keyingi')} ${icon('right')}</button>` : `<button class="btn btn-saffron" id="next">${t('Testni yakunlash')}</button>`}
         </div>`;
       $q.querySelectorAll('.opt').forEach((b) => b.addEventListener('click', () => choose(Number(b.dataset.i))));
       $q.querySelector('#prev').addEventListener('click', () => show(cur - 1));
@@ -165,7 +165,7 @@ export default async function exam(main, { id }, { state, setTitle, navigate }) 
     async function save(position, patch) {
       pending.set(position, { ...(pending.get(position) || {}), ...patch });
       $save.className = 'save-state';
-      $save.innerHTML = `${icon('upload')} Saqlanmoqda…`;
+      $save.innerHTML = `${icon('upload')} ${t('Saqlanmoqda…')}`;
       await flush();
     }
     let flushing = false;
@@ -178,11 +178,11 @@ export default async function exam(main, { id }, { state, setTitle, navigate }) 
           if (JSON.stringify(pending.get(position)) === JSON.stringify(patch)) pending.delete(position);
         }
         $save.className = 'save-state';
-        $save.innerHTML = `${icon('check')} Barcha javoblar saqlandi`;
+        $save.innerHTML = `${icon('check')} ${t('Barcha javoblar saqlandi')}`;
       } catch (e) {
-        if (e.status === 409) { flushing = false; return done('Test yakunlandi'); }
+        if (e.status === 409) { flushing = false; return done(t('Test yakunlandi')); }
         $save.className = 'save-state err';
-        $save.innerHTML = `${icon('alert')} Saqlanmadi, qayta urinilmoqda`;
+        $save.innerHTML = `${icon('alert')} ${t('Saqlanmadi, qayta urinilmoqda')}`;
         setTimeout(() => { flushing = false; flush(); }, 3000);
         return;
       }
@@ -195,7 +195,7 @@ export default async function exam(main, { id }, { state, setTitle, navigate }) 
       const sec = Math.round((a.deadline - now()) / 1000);
       $timer.querySelector('span').textContent = fmtClock(sec);
       $timer.classList.toggle('low', sec <= 60);
-      if (sec <= 0 && !finished) finish('Vaqt tugadi. Javoblaringiz avtomatik topshirildi');
+      if (sec <= 0 && !finished) finish(t('Vaqt tugadi. Javoblaringiz avtomatik topshirildi'));
     }
     const timer = setInterval(tick, 500);
     tick();
@@ -204,11 +204,11 @@ export default async function exam(main, { id }, { state, setTitle, navigate }) 
       const answered = a.items.filter((x) => x.chosen !== null).length;
       const flagged = a.items.filter((x) => x.flagged).length;
       const m = modal({
-        title: 'Testni yakunlaysizmi?',
-        body: `<div class="stack"><p>Javob berilgan: <b>${answered} / ${N}</b>${flagged ? `, belgilangan: <b>${flagged}</b>` : ''}.</p>
-          ${answered < N ? `<div class="notice notice-warn">${icon('alert')}<div>${N - answered} ta savolga javob berilmagan. Ular noto'g'ri hisoblanadi.</div></div>` : ''}
-          <p class="muted small">Yakunlangandan keyin javoblarni o'zgartirib bo'lmaydi.</p></div>`,
-        foot: '<button class="btn btn-ghost" data-close>Davom etish</button><button class="btn btn-saffron" data-ok>Yakunlash</button>',
+        title: t('Testni yakunlaysizmi?'),
+        body: `<div class="stack"><p>${t('Javob berilgan: <b>{a} / {n}</b>', { a: answered, n: N })}${flagged ? t(', belgilangan: <b>{f}</b>', { f: flagged }) : ''}.</p>
+          ${answered < N ? `<div class="notice notice-warn">${icon('alert')}<div>${t("{n} ta savolga javob berilmagan. Ular noto'g'ri hisoblanadi.", { n: N - answered })}</div></div>` : ''}
+          <p class="muted small">${t("Yakunlangandan keyin javoblarni o'zgartirib bo'lmaydi.")}</p></div>`,
+        foot: `<button class="btn btn-ghost" data-close>${t('Davom etish')}</button><button class="btn btn-saffron" data-ok>${t('Yakunlash')}</button>`,
       });
       m.el.querySelector('[data-ok]').addEventListener('click', () => { m.close(); finish(); });
     }
@@ -245,18 +245,18 @@ export default async function exam(main, { id }, { state, setTitle, navigate }) 
         if (r.ignored) return;
         violations = r.violations;
         updateMeta();
-        if (r.finished) { finished = true; stop(); toast('Qoidabuzarliklar chegarasidan oshildi. Test yakunlandi', 'bad'); return navigate(`/natija/${a.id}`, { replace: true }); }
+        if (r.finished) { finished = true; stop(); toast(t('Qoidabuzarliklar chegarasidan oshildi. Test yakunlandi'), 'bad'); return navigate(`/natija/${a.id}`, { replace: true }); }
         warn(r.label);
       } catch (e) {
-        if (e.status === 409) done('Test yakunlandi');
+        if (e.status === 409) done(t('Test yakunlandi'));
       }
     }
 
     function warn(label, needFs = false) {
       showBlocker(`${icon('alert', 'big')}
-        <h2>Ogohlantirish${a.maxViolations ? ` ${violations} / ${a.maxViolations}` : ''}</h2>
-        <p>${esc(label)}. Bu holat o'qituvchiga ko'rsatiladi.${a.maxViolations ? ` Yana ${a.maxViolations - violations} ta qoidabuzarlikdan keyin test avtomatik yakunlanadi.` : ''}</p>
-        <button class="btn btn-saffron btn-lg" id="back">${needFs || (fsSupported() && !inFullscreen()) ? 'To\'liq ekranga qaytish' : 'Testga qaytish'}</button>`);
+        <h2>${t('Ogohlantirish')}${a.maxViolations ? ` ${violations} / ${a.maxViolations}` : ''}</h2>
+        <p>${esc(label)}. ${t("Bu holat o'qituvchiga ko'rsatiladi.")}${a.maxViolations ? ' ' + t('Yana {n} ta qoidabuzarlikdan keyin test avtomatik yakunlanadi.', { n: a.maxViolations - violations }) : ''}</p>
+        <button class="btn btn-saffron btn-lg" id="back">${needFs || (fsSupported() && !inFullscreen()) ? t("To'liq ekranga qaytish") : t('Testga qaytish')}</button>`);
     }
 
     function showBlocker(html) {
@@ -295,7 +295,7 @@ export default async function exam(main, { id }, { state, setTitle, navigate }) 
     on(document, 'keydown', blockKeys, true);
     on(document, 'keyup', (e) => {
       if (e.key === 'PrintScreen') {
-        navigator.clipboard?.writeText('EduTest: ekran rasmini olish taqiqlangan').catch(() => {});
+        navigator.clipboard?.writeText(t('EduTest: ekran rasmini olish taqiqlangan')).catch(() => {});
         violation('screenshot_key');
       }
     }, true);
@@ -310,7 +310,7 @@ export default async function exam(main, { id }, { state, setTitle, navigate }) 
     on(document, 'fullscreenchange', () => {
       if (!inFullscreen() && !finished) {
         violation('fullscreen_exit');
-        warn('To\'liq ekran rejimidan chiqildi', true);
+        warn(t("To'liq ekran rejimidan chiqildi"), true);
       }
     });
 
@@ -320,14 +320,14 @@ export default async function exam(main, { id }, { state, setTitle, navigate }) 
     if (channel) channel.onmessage = (e) => {
       if (e.data === 'opened' && !finished) {
         finished = true; stop();
-        showBlocker(`${icon('alert', 'big')}<h2>Test boshqa oynada ochildi</h2><p>Bir vaqtning o'zida faqat bitta oynada ishlash mumkin. Bu oynani yoping.</p>`);
+        showBlocker(`${icon('alert', 'big')}<h2>${t('Test boshqa oynada ochildi')}</h2><p>${t("Bir vaqtning o'zida faqat bitta oynada ishlash mumkin. Bu oynani yoping.")}</p>`);
       }
     };
 
     // Sahifa yangilansa ham davom etish uchun vaqti-vaqti bilan holatni tekshirish
     const poll = setInterval(async () => {
       if (finished) return;
-      try { const r = await get(`/api/attempts/${a.id}`); if (r.result) done('Test yakunlandi'); } catch { /* */ }
+      try { const r = await get(`/api/attempts/${a.id}`); if (r.result) done(t('Test yakunlandi')); } catch { /* */ }
     }, 30e3);
 
     function stop() {
@@ -342,9 +342,9 @@ export default async function exam(main, { id }, { state, setTitle, navigate }) 
     }
 
     if (fsSupported() && !inFullscreen()) {
-      showBlocker(`${icon('maximize', 'big')}<h2>To'liq ekran rejimi</h2>
-        <p>Test to'liq ekranda o'tkaziladi. Davom etish uchun tugmani bosing.</p>
-        <button class="btn btn-saffron btn-lg" id="back">To'liq ekranga o'tish</button>`);
+      showBlocker(`${icon('maximize', 'big')}<h2>${t("To'liq ekran rejimi")}</h2>
+        <p>${t("Test to'liq ekranda o'tkaziladi. Davom etish uchun tugmani bosing.")}</p>
+        <button class="btn btn-saffron btn-lg" id="back">${t("To'liq ekranga o'tish")}</button>`);
     }
     show(cur);
     return stop;

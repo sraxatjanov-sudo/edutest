@@ -1,5 +1,5 @@
 module.exports = {
-  slug: 'tarix', name: 'Tarix', icon: 'column', color: '#8A6D1F', sort: 7,
+  slug: 'tarix', name: 'Tarix', icon: 'column', color: '#8A6D1F', sort: 8,
   description: 'O\'zbekiston va jahon tarixi: sanalar, shaxslar, voqealar.',
   questions: [
     ['O\'zbekiston mustaqilligi qachon e\'lon qilingan?', '1991-yil 31-avgust', ['1991-yil 1-sentyabr', '1992-yil 8-dekabr', '1990-yil 20-iyun'], '31-avgust kuni Oliy Kengash mustaqillikni e\'lon qildi; 1-sentyabr — Mustaqillik kuni bayrami.', 2],

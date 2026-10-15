@@ -3,6 +3,7 @@ const db = require('../db');
 const exam = require('../lib/exam');
 const { send, HttpError, clientIp } = require('../lib/http');
 const { shuffle, rateLimiter } = require('../lib/security');
+const { pick } = require('../lib/i18n');
 
 const practiceLimiter = rateLimiter({ windowMs: 60e3, max: 120 });
 
@@ -33,7 +34,7 @@ module.exports = (r) => {
   });
 
   r.get('/api/subjects', ({ res }) => {
-    const rows = db.prepare(`SELECT s.id, s.slug, s.name, s.description, s.icon, s.color,
+    const rows = db.prepare(`SELECT s.id, s.slug, tr(s.i18n, 'name', s.name) AS name, tr(s.i18n, 'description', s.description) AS description, s.icon, s.color,
         (SELECT COUNT(*) FROM questions q WHERE q.subject_id = s.id AND q.archived = 0) AS question_count,
         (SELECT COUNT(*) FROM tests t WHERE t.subject_id = s.id AND t.is_active = 1) AS test_count,
         (SELECT ROUND(AVG(a.percent)) FROM attempts a JOIN tests t ON t.id = a.test_id
@@ -45,7 +46,7 @@ module.exports = (r) => {
   r.get('/api/subjects/:slug', ({ res, params, user }) => {
     const s = subjectBySlug(params.slug);
     const counts = db.prepare(`SELECT difficulty, COUNT(*) AS c FROM questions WHERE subject_id = ? AND archived = 0 GROUP BY difficulty`).all(s.id);
-    const tests = db.prepare(`SELECT t.id, t.title, t.description, t.question_count, t.time_limit, t.difficulty, t.max_attempts, t.max_violations,
+    const tests = db.prepare(`SELECT t.id, tr(t.i18n, 'title', t.title) AS title, tr(t.i18n, 'description', t.description) AS description, t.question_count, t.time_limit, t.difficulty, t.max_attempts, t.max_violations,
         (SELECT COUNT(*) FROM attempts a WHERE a.test_id = t.id AND a.status = 'finished') AS attempts,
         (SELECT ROUND(AVG(a.percent)) FROM attempts a WHERE a.test_id = t.id AND a.status = 'finished') AS avg_percent
       FROM tests t WHERE t.subject_id = ? AND t.is_active = 1 ORDER BY t.id`).all(s.id);
@@ -59,7 +60,7 @@ module.exports = (r) => {
       }
     }
     send(res, 200, {
-      subject: { id: s.id, slug: s.slug, name: s.name, description: s.description, icon: s.icon, color: s.color },
+      subject: { id: s.id, slug: s.slug, name: pick(s.i18n, 'name', s.name), description: pick(s.i18n, 'description', s.description), icon: s.icon, color: s.color },
       difficulty: Object.fromEntries(counts.map((c) => [c.difficulty, c.c])),
       tests,
     });
@@ -72,16 +73,17 @@ module.exports = (r) => {
     const s = subjectBySlug(params.slug);
     const count = Math.min(Math.max(Number(query.get('count')) || 10, 5), 30);
     const difficulty = [1, 2, 3].includes(Number(query.get('difficulty'))) ? Number(query.get('difficulty')) : 0;
-    const pool = db.prepare(`SELECT id, text, options, difficulty FROM questions WHERE subject_id = ? AND archived = 0
+    const pool = db.prepare(`SELECT id, tr(i18n, 'text', text) AS text, tr(i18n, 'options', options) AS options, difficulty FROM questions WHERE subject_id = ? AND archived = 0
       AND (? = 0 OR difficulty = ?)`).all(s.id, difficulty, difficulty);
     const items = shuffle(pool).slice(0, count).map((q) => ({ id: q.id, text: q.text, difficulty: q.difficulty, options: shuffle(JSON.parse(q.options)) }));
-    send(res, 200, { subject: { name: s.name, slug: s.slug, color: s.color }, items });
+    send(res, 200, { subject: { name: pick(s.i18n, 'name', s.name), slug: s.slug, color: s.color }, items });
   });
 
   r.post('/api/practice/check', ({ req, res, body }) => {
     const lim = practiceLimiter.hit(clientIp(req));
     if (!lim.ok) throw new HttpError(429, 'Juda ko\'p so\'rov. Bir daqiqadan keyin davom eting');
-    const q = db.prepare('SELECT options, correct, explanation FROM questions WHERE id = ? AND archived = 0').get(Number(body.id));
+    const q = db.prepare(`SELECT tr(i18n, 'options', options) AS options, correct, tr(i18n, 'explanation', explanation) AS explanation
+      FROM questions WHERE id = ? AND archived = 0`).get(Number(body.id));
     if (!q) throw new HttpError(404, 'Savol topilmadi');
     const right = JSON.parse(q.options)[q.correct];
     send(res, 200, { ok: String(body.answer) === right, correct: right, explanation: q.explanation });
@@ -89,7 +91,8 @@ module.exports = (r) => {
 
   // Bosh sahifadagi namunaviy savol
   r.get('/api/sample', ({ res }) => {
-    const q = db.prepare(`SELECT q.id, q.text, q.options, s.name AS subject FROM questions q JOIN subjects s ON s.id = q.subject_id
+    const q = db.prepare(`SELECT q.id, tr(q.i18n, 'text', q.text) AS text, tr(q.i18n, 'options', q.options) AS options, tr(s.i18n, 'name', s.name) AS subject
+      FROM questions q JOIN subjects s ON s.id = q.subject_id
       WHERE q.archived = 0 AND q.difficulty = 1 AND q.text NOT LIKE '%\`%' ORDER BY RANDOM() LIMIT 1`).get();
     send(res, 200, q ? { id: q.id, text: q.text, subject: q.subject, options: shuffle(JSON.parse(q.options)) } : {});
   });
@@ -148,11 +151,11 @@ module.exports = (r) => {
   // ---------- Shaxsiy kabinet ----------
   r.get('/api/me/dashboard', ({ res, user }) => {
     const rows = db.prepare(`SELECT a.id, a.status, a.score, a.total, a.percent, a.started_at, a.finished_at, a.deadline,
-        a.finish_reason, a.violations, t.id AS test_id, t.title, s.name AS subject, s.slug, s.color
+        a.finish_reason, a.violations, t.id AS test_id, tr(t.i18n, 'title', t.title) AS title, tr(s.i18n, 'name', s.name) AS subject, s.slug, s.color
       FROM attempts a JOIN tests t ON t.id = a.test_id JOIN subjects s ON s.id = t.subject_id
       WHERE a.user_id = ? ORDER BY a.id DESC`).all(user.id);
     const done = rows.filter((x) => x.status === 'finished');
-    const bySubject = db.prepare(`SELECT s.name, s.slug, s.color, COUNT(*) AS attempts, ROUND(AVG(a.percent)) AS avg, MAX(a.percent) AS best
+    const bySubject = db.prepare(`SELECT tr(s.i18n, 'name', s.name) AS name, s.slug, s.color, COUNT(*) AS attempts, ROUND(AVG(a.percent)) AS avg, MAX(a.percent) AS best
       FROM attempts a JOIN tests t ON t.id = a.test_id JOIN subjects s ON s.id = t.subject_id
       WHERE a.user_id = ? AND a.status = 'finished' GROUP BY s.id ORDER BY avg DESC`).all(user.id);
     const rankRows = db.prepare(`SELECT a.user_id, AVG(a.percent) AS avg FROM attempts a JOIN users u ON u.id = a.user_id

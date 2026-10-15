@@ -4,18 +4,19 @@ Yakuniy loyiha. Muallif: **Raxatjanov Shoxrux**
 
 ![Bosh sahifa](docs/screenshots/01home.png)
 
-EduTest — talabalar 10 ta fan bo'yicha onlayn imtihon topshiradigan va mashq qiladigan veb-platforma. Asosiy g'oya **halol imtihon**. Har bir talaba savollar bankidan o'ziga tasodifiy tanlangan savollarni aralashgan tartibda oladi. To'g'ri javoblar brauzerga hech qachon yuborilmaydi. Boshqa oynaga o'tish, nusxa olish va to'liq ekrandan chiqish qayd etiladi, chegaradan oshganda test avtomatik yakunlanadi.
+EduTest — talabalar 11 ta fan bo'yicha onlayn imtihon topshiradigan va mashq qiladigan veb-platforma. Sayt **uch tilda** ishlaydi: o'zbek, rus va qoraqalpoq. Asosiy g'oya **halol imtihon**. Har bir talaba savollar bankidan o'ziga tasodifiy tanlangan savollarni aralashgan tartibda oladi. To'g'ri javoblar brauzerga hech qachon yuborilmaydi. Boshqa oynaga o'tish, nusxa olish va to'liq ekrandan chiqish qayd etiladi, chegaradan oshganda test avtomatik yakunlanadi.
 
 ## Asosiy ko'rsatkichlar
 
 | | |
 |---|---|
-| Fanlar | 10 ta: Matematika, Fizika, Kimyo, Biologiya, Ona tili va adabiyot, Ingliz tili, Tarix, Geografiya, Informatika, Dasturlash |
-| Savollar banki | **366 ta savol**, har biri izohli va 3 qiyinlik darajasida |
-| Tayyor testlar | 20 ta (har fanda "umumiy test" va "tezkor sinov") |
+| Fanlar | 11 ta: Matematika, Fizika, Kimyo, Biologiya, Ona tili va adabiyot, Ingliz tili, Rus tili, Tarix, Geografiya, Informatika, Dasturlash |
+| Savollar banki | **404 ta savol**, har biri izohli va 3 qiyinlik darajasida |
+| Tillar | O'zbekcha, Русский, Qaraqalpaqsha — interfeys va savollar (Ingliz va Rus tili fanlaridan tashqari) |
+| Tayyor testlar | 22 ta (har fanda "umumiy test" va "tezkor sinov") |
 | Rollar | Talaba, O'qituvchi, Administrator |
 | Tashqi paketlar | **0 ta**: faqat Node.js'ning o'zi |
-| Avtomatik testlar | 9 ta (`npm test`) |
+| Avtomatik testlar | 24 ta (`npm test`) |
 
 ## Internetga joylash (bir tugma bilan)
 
@@ -77,6 +78,19 @@ Kirish sahifasida bu hisoblarni bir bosishda to'ldirish mumkin.
 - O'qituvchining barcha imkoniyatlari
 - Foydalanuvchilar: rolni o'zgartirish, bloklash (sessiyalari darhol yopiladi), o'chirish
 - Fanlarni, testlarni o'chirish
+
+## Uch tillilik
+
+Saytning yuqori o'ng burchagida til tanlagich bor: **UZ / RU / QQ**. Tanlangan til brauzerda eslab qolinadi.
+
+- **Interfeys:** barcha menyu, tugma, sahifa, qoidalar, xato xabarlari va boshqaruv paneli tarjima qilingan (`public/js/i18n-dict.js`).
+- **Savollar:** 9 ta fanning barcha savollari, javob variantlari va izohlari rus va qoraqalpoq tillariga tarjima qilingan (`db/questions/i18n/`). **Ingliz tili** va **Rus tili** fanlarining savollari o'z tilida qoladi, chunki ular shu tilni tekshiradi. Ona tili savollarida esa tekshirilayotgan o'zbekcha so'zlar o'zgarmaydi.
+- **Server xabarlari:** xatolar, baholar va qoidabuzarlik turlari ham tanlangan tilda qaytariladi (`lib/i18n.js`).
+- **Imtihon tildan mustaqil:** variantlar tartibi barcha tillarda bir xil saqlanadi. Shuning uchun imtihonni bir tilda boshlab, natijani boshqa tilda ko'rsa ham to'g'ri javob o'z joyida qoladi.
+- **O'qituvchi tarjima qo'sha oladi:** savol, test va fan muharrirlarida "Tarjimalar" bo'limi bor. Tarjima kiritilmasa, asosiy (o'zbekcha) matn ko'rsatiladi.
+- **Tekshiruv:** avtomatik testlar har bir tarjima asosiy savolga mos kelishini (savollar va variantlar soni, raqamli javoblar) va interfeysdagi har bir matnning tarjimasi borligini tekshiradi.
+
+> Qoraqalpoqcha tarjimani himoyadan oldin tilni yaxshi biladigan odamga ko'rsatib olish tavsiya etiladi.
 
 ## Nusxa olishga qarshi himoya
 

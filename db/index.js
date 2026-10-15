@@ -102,6 +102,19 @@ CREATE TABLE IF NOT EXISTS violations (
 CREATE INDEX IF NOT EXISTS idx_violations_attempt ON violations(attempt_id);
 `);
 
+// Migratsiya: eski bazalarga yangi ustunlarni qo'shish
+function addColumn(table, column, def) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
+  if (!cols.includes(column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${def}`);
+}
+addColumn('subjects', 'i18n', 'TEXT');
+addColumn('tests', 'i18n', 'TEXT');
+addColumn('questions', 'i18n', 'TEXT');
+
+// tr(i18n, 'maydon', asosiy_qiymat) — so'rovdagi joriy tilga mos tarjimani qaytaradi
+const { pick } = require('../lib/i18n');
+db.function('tr', { deterministic: false }, (i18n, field, base) => pick(i18n, field, base));
+
 // Tranzaksiya yordamchisi
 db.tx = (fn) => {
   db.exec('BEGIN');

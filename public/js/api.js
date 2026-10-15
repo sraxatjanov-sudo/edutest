@@ -1,4 +1,6 @@
 // Server bilan aloqa
+import { getLang, t } from './i18n.js';
+
 export class ApiError extends Error {
   constructor(status, message) { super(message); this.status = status; }
 }
@@ -8,19 +10,19 @@ export async function api(url, { method = 'GET', body, signal } = {}) {
   try {
     res = await fetch(url, {
       method,
-      headers: body !== undefined ? { 'Content-Type': 'application/json' } : {},
+      headers: { 'X-Lang': getLang(), ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
       body: body !== undefined ? JSON.stringify(body) : undefined,
       credentials: 'same-origin',
       signal,
     });
   } catch (e) {
     if (e.name === 'AbortError') throw e;
-    throw new ApiError(0, 'Server bilan aloqa yo\'q. Internet ulanishini tekshiring');
+    throw new ApiError(0, t("Server bilan aloqa yo'q. Internet ulanishini tekshiring"));
   }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     if (res.status === 401) window.dispatchEvent(new CustomEvent('auth:expired'));
-    throw new ApiError(res.status, data.error || `Xatolik (${res.status})`);
+    throw new ApiError(res.status, data.error || t('Xatolik ({n})', { n: res.status }));
   }
   return data;
 }
